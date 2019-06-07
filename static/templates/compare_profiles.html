@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+    <head>
+        <title>NPN Data Quality - Compare Profiles</title>
+        <link rel="stylesheet" type="text/css" href="static/css/style.css">
+        <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    </head>
+    <body>
+        <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
+        <script type="text/javascript" src="static/js/lib/jquery-ui.js"></script>
+        <script type="text/javascript" src="static/js/compare_profiles.js"></script>
+        <script type="text/javascript" defer src="static/js/wind_profiler.js"></script>
+        <div id="pageHeader">
+            <div id="pageHeaderImageDiv">
+                <img id="pageHeaderImage" src="static/img/ROC_logo.png">
+            </div>
+            <div id="pageHeaderTitleDiv">NPN Data Quality - Compare Profiles</div>
+        </div>
+        <div class="container">
+            <div style="margin:10px">
+                <button style="display:inline-block;" id="nextDay">Next Day +</button>
+                <button style="display:inline-block;" alt="off" id="animate">Start Animation |></button>
+                <select id="selectSite"></select>
+                <input id="selectDate" type="text"></option>
+            </div>
+            <div style="position:absolute;width:1300px;height:420px;top:45px">
+                <div id="profilerCanvas"></div>
+            </div>
+            <div style="position:absolute;width:1300px;height:450px;top:465px;">
+                <div id="hrrrCanvas"></div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -9,22 +9,49 @@ Date: 20190411
 
 """
 import csv, os, math, json
+import requests, time
+from collections import defaultdict, OrderedDict
+from logging.config import dictConfig
 from datetime import datetime
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 from flask import Flask, request
 from flask_cors import CORS
 import ncepbufr
 
-app = Flask(__name__)
-CORS(app)
+APP = Flask(__name__)
+CORS(APP)
 
-NPN_ICAO = 'ROCO2'
-WMO_ID = '723570'
-DATES_DIRS = sorted(os.listdir(os.path.join(NPN_ICAO, 'CSV')))
+NPN_API = 'http://10.20.120.110/npn_api/'
+DATA_DIR = '../hrrr_ak/BUFR'
+#NPN_ICAO = 'ROCO2'
+#WMO_ID = '723570'
+#DATES_DIRS = sorted(os.listdir(os.path.join(DATA_DIR, NPN_ICAO, 'CSV')))
+LOG_FILE = '/tmp/npn-dq-tool.log'
 
-def pressure_to_height(pressure):
+WMO_SITE_IDS = {'TLKA': '702510'}
+
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {'file_handler': {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'formatter': 'default',
+        'filename': LOG_FILE,
+        'level': 'DEBUG'
+    }},
+    'root': {
+        'level': 'DEBUG',
+        'handlers': ['file_handler']
+    }
+})
+
+def pressure_to_height(pressure, elev):
     """
-    Converts pressure to height using the U.S. standard atmosphere
+    Converts pressure to height using the U.S. standard atmosphere,
+    subtracting station elevation to yield height AGL
     """
     temp_naught = 288. # units K
     gamma = 6.5e-3 # units K/m
@@ -34,7 +61,7 @@ def pressure_to_height(pressure):
     exponent_1 = (dry_air_gas_constant * gamma / gravity)
     factor_1 = (temp_naught / gamma)
     factor_2 = (1. - (pressure / pressure_naught) ** exponent_1)
-    return factor_1 * factor_2
+    return (factor_1 * factor_2) - elev
 
 def wind_speed(u_vec, v_vec):
     """
@@ -50,6 +77,12 @@ def wind_direction(u_vec, v_vec):
     wdir[wdir <= 0] += 360.
     return wdir
 
+def wind_components(speed, wdir):
+    """
+    Computes the vector components of wind from speed and direction.
+    Wind components are return as U (east-west) and V (north-south). 
+    """
+    return None
 def read_ncep_bufr(fname):
     """
     Reads NCEP BUFR type files,
@@ -61,8 +94,8 @@ def read_ncep_bufr(fname):
         bufr = ncepbufr.open(fname)
         while bufr.advance() == 0:
             while bufr.load_subset() == 0:
+                elev = bufr.read_subset('GELV')[0][0]
                 ftim = bufr.read_subset('FTIM')[0][0]
-                print fname, ftim
                 if ftim == 0.:
                     data_exists = True
                     pressure_pa = bufr.read_subset('PRES')[0]
@@ -71,15 +104,17 @@ def read_ncep_bufr(fname):
         if not data_exists:
             pressure_pa = np.zeros((50,))
             u_wind = np.zeros((50,)) 
-            v_wind = np.zeros((50,))   
+            v_wind = np.zeros((50,))
+            elev = 0.0
         bufr.close()
         pressure_hpa = pressure_pa / 100.
-        height = np.around(pressure_to_height(pressure_hpa), decimals=1)
+        height = np.around(pressure_to_height(pressure_hpa, elev), decimals=1)
         direction = np.around(wind_direction(u_wind, v_wind), decimals=1)
         speed = np.around(wind_speed(u_wind, v_wind), decimals=1)
         return zip(height, speed, direction)
     except IOError as err:
         print 'Error reading NCEP BUFR file %s, skipping for now' % err
+        APP.logger.exception(err)
         return zip([0], [0], [0])
 
 def read_npn_csv(fname):
@@ -87,19 +122,25 @@ def read_npn_csv(fname):
     Reads NGNPN CSV files.
     Extracts and converts height and wind speed/direction.
     """
-    with open(fname, 'rb') as csv_file_obj:
-        reader = csv.reader(csv_file_obj)
-        try:
-            raw_data = [row for row in reader]
-            data = [row for row in raw_data if len(row) == 7][1:]
-            data = data[::3]
-            height = [float(data_point[0]) for data_point in data]
-            speed = [float(data_point[3]) for data_point in data]
-            direction = [float(data_point[2]) for data_point in data]
-            return zip(height, speed, direction)
-        except csv.Error as err:
-            print 'file %s, line %d: %s' % (fname, reader.line_num, err)
-            return zip([0], [0], [0])
+    file_exists = os.path.isfile(fname)
+    if file_exists:
+        with open(fname, 'rb') as csv_file_obj:
+            try:
+                reader = csv.reader(csv_file_obj)
+                raw_data = [row for row in reader]
+                data = [row for row in raw_data if len(row) == 7][1:]
+                height = [float(data_point[0]) for data_point in data]
+                speed = [float(data_point[3]) for data_point in data]
+                direction = [float(data_point[2]) for data_point in data]
+                return zip(height, speed, direction)
+            except csv.Error as err:
+                print 'file %s, line %d: %s' % (fname, reader.line_num, err)
+                APP.logger.exception(err)
+                return zip([0], [0], [0])
+    else:
+        file_not_found = 'File not found: %s' % fname
+        APP.logger.debug(file_not_found)
+        return zip([0], [0], [0])
 
 def calc_min_max(npn_heights, hrrr_heights):
     """
@@ -113,57 +154,133 @@ def calc_min_max(npn_heights, hrrr_heights):
     global_min_height = max(npn_min_height, hrrr_min_height)
     return (global_max_height, global_min_height)
 
-@app.route('/compare')
+def retrieve_hrrr_winds(date, hour, icao):
+    wmo_id = WMO_SITE_IDS[icao]
+    hrrr_fname = 'bufr.' + wmo_id + '.' + date + hour
+    hrrr_fpath = os.path.join(DATA_DIR, wmo_id, date, hrrr_fname)
+    hrrr_data_zipped = read_ncep_bufr(hrrr_fpath)
+    return hrrr_data_zipped
+
+def retrieve_npn_winds(date, icao):
+    winds = 'winds?hourly=t&hours=24&enddate=' + date + '2359&icao=' + icao 
+    request_url = NPN_API + winds
+    winds_request = requests.get(request_url)
+    return winds_request.json()
+
+@APP.route('/compare')
 def compare_profiles():
-    npn_out = []
     hrrr_out = []
-    index = int(request.args.get('index'))
-    index = 0
-    date = DATES_DIRS[index]
-    for hour in range(21):
-        hour_str = '%02d' % hour
-        datetime_obj = datetime.strptime(date + hour_str, '%Y%m%d%H')
-        timestamp = (datetime_obj - datetime(1970, 1, 1)).total_seconds()
-        npn_fname = os.path.join(NPN_ICAO, 'CSV', date, NPN_ICAO + '-' +
-                                 date + hour_str + '0000.npn.hrlywind.csv')
-        hrrr_fname = os.path.join(WMO_ID, date, 'bufr.' + WMO_ID +
-                                  '.' + date + hour_str)
-        npn_data_zipped = read_npn_csv(npn_fname)
-        hrrr_data_zipped = read_ncep_bufr(hrrr_fname)
-        hrrr_data = [{"SPD": speed, "DIR": direction,
-                      "HT": height}
-                     for height, speed, direction
-                     in hrrr_data_zipped if speed < 999]
-        npn_data = [{"SPD": speed, "DIR": direction,
-                     "HT": height}
-                    for height, speed, direction in npn_data_zipped
-                    if speed < 999]
-        hrrr_heights = np.asarray([level["HT"] for level in hrrr_data])
-        npn_heights = np.asarray([level["HT"] for level in npn_data])
-        hrrr_data_masked = [level for level in hrrr_data
-                            if np.abs(npn_heights - level["HT"]).min() < 250]
-        npn_data_masked = [level for level in npn_data
-                          if np.abs(hrrr_heights - level["HT"]).min() < 250]
+    date = request.args.get('date')
+    icao = request.args.get('icao')
+    npn_data = retrieve_npn_winds(date, icao)
+    for hour, npn_hourly in enumerate(npn_data):
+        npn_hourly_data = npn_hourly['data']
+        timestamp = npn_hourly['timestamp']
+        utc_dt = datetime.utcfromtimestamp(timestamp)
+        hour_str = '%02d' % utc_dt.hour
+        iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
+        hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, icao)
+        hrrr_hourly_data = [{"SPD": speed, "DIR": direction,
+                             "HT": height}
+                            for height, speed, direction
+                            in hrrr_zip if speed < 999]
+        hrrr_heights = np.asarray([level["HT"] for level in hrrr_hourly_data])
+        npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
         global_max_height, global_min_height = calc_min_max(npn_heights, hrrr_heights)
-        npn_out.append({"hourly": "t", "site-id": "ROC Testbed",
-                        "min_ht": global_min_height, "timestamp": timestamp,
-                        "ICAO": "ROCO2", "max_ht": global_max_height,
-                        "data": npn_data_masked})
-        hrrr_out.append({"hourly": "t", "site-id": "HRRR Sounding",
+        hrrr_out.append({"hourly": "t", "site-id": WMO_SITE_IDS[icao],
                          "min_ht": global_min_height, "timestamp": timestamp,
-                         "ICAO": "HRRR ANALYSIS - KOUN",
+                         "ICAO": "HRRR ANALYSIS - WMO ID " + WMO_SITE_IDS[icao],
                          "max_ht": global_max_height,
-                         "data": hrrr_data_masked})
-        global_out = {"npn": npn_out, "hrrr": hrrr_out}
+                         "data": hrrr_hourly_data})
+    global_out = {"npn": npn_data, "hrrr": hrrr_out}
     return json.dumps(global_out)
 
-@app.route('/profiles')
+@APP.route('/difference')
+def difference_profiles():
+    all_days = True if request.args.get('all') == 'true' else False
+    verification_heights = np.arange(400., 16000, 100.)
+    days = len(DATES_DIRS) if all_days else 1
+    verification = np.zeros((days, 2, verification_heights.shape[0]))
+    index = int(request.args.get('index'))
+    date_directories = DATES_DIRS if all_days else [DATES_DIRS[index]]
+    title = 'All ' + str(days) + ' days' if all_days else DATES_DIRS[index]
+    for date_idx, date in enumerate(date_directories):
+        for hour_idx, hour in enumerate([0, 12]):
+            hour_str = '%02d' % hour
+            datetime_obj = datetime.strptime(date + hour_str, '%Y%m%d%H')
+            timestamp = (datetime_obj - datetime(1970, 1, 1)).total_seconds()
+            npn_zip, hrrr_zip = format_path_and_read(date, hour_str)
+            hrrr_heights = np.asarray([height for height, speed, _ in hrrr_zip if speed < 999])
+            npn_heights = np.asarray([height for height, speed, _ in npn_zip if speed < 999])
+            hrrr_speed = np.asarray([speed for height, speed, _ in hrrr_zip if speed < 999])
+            npn_speed = np.asarray([speed for height, speed, _ in npn_zip if speed < 999])
+            hrrr_speed_interp = np.interp(verification_heights, hrrr_heights, hrrr_speed)
+            npn_speed_interp = np.interp(verification_heights, npn_heights, npn_speed)
+            speed_diff = hrrr_speed_interp - npn_speed_interp
+            verification[date_idx][hour_idx] = speed_diff
+    verification = np.around(verification, decimals=2)
+    verification_mean = np.around(np.nanmean(verification, axis=(0,1)), decimals=1)
+    verification_std = np.around(np.nanstd(verification, axis=(0,1)), decimals=1)
+    std_obs = [{'x': std, 'y': verification_heights[idx]} for idx, std in enumerate(verification_std) if not np.isnan(std)]
+    mean_obs = [{'x': mean, 'y': verification_heights[idx]} for idx, mean in enumerate(verification_mean) if not np.isnan(mean)]
+    all_obs = [{'x': speed, 'y': verification_heights[idx]} for day in verification for hour in day for idx, speed in enumerate(hour) if not np.isnan(speed)]
+    return json.dumps({'all_obs': all_obs, 'mean_obs': mean_obs, 'std_obs': std_obs, 'title': title})
+
+@APP.route('/available')
+def data_availability():
+    all_days = True if request.args.get('all') == 'true' else False
+    days = len(DATES_DIRS) if all_days else 1
+    index = int(request.args.get('index'))
+    date_directories = DATES_DIRS if all_days else [DATES_DIRS[index]]
+    title = 'All ' + str(days) + ' days' if all_days else DATES_DIRS[index]
+    heights = defaultdict(list)
+    for date_idx, date in enumerate(date_directories):
+        for hour in range(24):
+            hour_str = '%02d' % hour
+            datetime_obj = datetime.strptime(date + hour_str, '%Y%m%d%H')
+            timestamp = (datetime_obj - datetime(1970, 1, 1)).total_seconds()
+            npn_zip = format_path_and_read(date, hour_str, npn_only=True)
+            for height, speed , _ in npn_zip:
+                height_int = int(height)
+                heights[height_int].append(speed)
+    for height in heights:
+        H = heights[height]
+        H = np.asarray(H, dtype=np.float32)
+        H[H == 999.9] = np.nan
+        valid_data = sum(~np.isnan(H))
+        length_data = float(H.shape[0])
+        heights[height] = round(valid_data / length_data, 2)
+    heights = OrderedDict(sorted(heights.iteritems(), key=lambda x: x[0]))
+    availability = [{'x': availability, 'y': height} for height, availability in heights.iteritems()]
+    available = [available['x'] for available in availability]
+    available_smoothed = np.around(gaussian_filter1d(available, 4), decimals=3)
+    availability_smoothed = [{'x': available_smoothed[idx], 'y': available['y']} for idx, available in enumerate(availability)]
+    return json.dumps({'availability_smoothed': availability_smoothed, 
+                       'availability':availability, 'title': title})
+
+
+@APP.route('/profiles')
 def profile_html():
     """
     Sends main page static HTML
     """
-    return app.send_static_file('compare_profiles.html')
+    return APP.send_static_file('templates/compare_profiles.html')
+
+@APP.route('/differences')
+def difference_html():
+    """
+    Sends difference page static HTML
+    """
+    return APP.send_static_file('templates/difference_profiles.html')
+
+@APP.route('/availability')
+def availability_html():
+    """
+    Sends availability page static HTML
+    """
+    return APP.send_static_file('templates/availability.html')
+
 
 if __name__ == '__main__':
-    app.debug = True
-    app.run()
+    APP.debug = True
+    APP.run('10.20.58.144')

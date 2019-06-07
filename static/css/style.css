@@ -1,0 +1,42 @@
+body, html{
+	box-sizing: border-box; 
+	letter-spacing: 0; 
+	margin: 0; padding: 0; line-height: 1.21em; 
+	font-family: Arial, Helvetica, sans-serif, monospace; 
+	font-size: 14px; 
+}
+.container{ display: flex; flex-direction: column; box-sizing: border-box; position: relative; height: 965px; min-height: 850px; width: 1300px; min-width: 1300px; margin: 0 auto 5px auto; padding: 0; background-color: white; text-align: left; overflow: hidden; border: 1px solid #828282; border-top: 0 solid black;}
+#pageHeader{ 
+	box-sizing: border-box;
+	position: relative;
+	display: flex;
+	height: 40px; width: 1300px; margin: 0 auto; padding: 0; 
+	color: white; 
+	background: linear-gradient(to right, rgba(127,147,209,0) 8%,rgba(127,147,209,1) 23%,rgba(102,124,204,1) 35%,rgba(8,52,230,1) 100%);
+	border: 1px solid #828282; border-bottom: 0 solid black;
+	overflow: show; 
+}
+#pageHeaderImageDiv{ top: 0; height: 40px; width: 40px; margin: 0; padding: 5px; }
+#pageHeader img{ height: 30px; width: 30px; }
+#pageHeaderTitleDiv{
+	height: 40px; width: 100%; line-height: 40px; vertical-align: middle;
+	text-align: center; font-size: 25px;
+}
+.loading-container{
+        display: block;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        position: fixed;
+}
+#loaderGif{
+        left: 50%;
+        top: 50%;
+        position: absolute;
+        display: none;
+}
+.ui-datepicker{
+        z-index: 100 !important;
+}

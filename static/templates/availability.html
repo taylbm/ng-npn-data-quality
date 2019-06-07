@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+    <head>
+        <title>NPN Data Quality - Data Availability</title>
+        <link rel="stylesheet" type="text/css" href="static/css/style.css">
+    </head>
+    <body>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js"></script>
+        <script src="static/js/availability.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+        <div id="pageHeader">
+            <div id="pageHeaderImageDiv">
+                <img id="pageHeaderImage" src="static/img/ROC_logo.png">
+            </div>
+            <div id="pageHeaderTitleDiv">NPN Data Quality - Data Availability</div>
+        </div>
+        <div class="container">
+            <div style="margin:10px;">
+                <button style="display:inline-block;" id="nextDay">Next Day +</button>
+                <button style="display:inline-block;" alt="off" id="animate">Start Animation |></button>
+                <button style="display:inline-block;" id="allDays">All Days</button>
+                <input style="display:inline-block;" type="checkbox" name="smoothed" value="on" checked>Smoothed Availability
+                <input style="display:inline-block;" type="checkbox" name="raw" value="on" checked>Raw Availability
+            </div>
+            <img id="loaderGif" src="static/img/ajax-loader.gif"></img>
+            <canvas id="plotCanvas"></canvas>
+        </div>
+    </body>
+</html>
