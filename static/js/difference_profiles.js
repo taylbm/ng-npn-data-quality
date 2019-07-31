@@ -3,13 +3,15 @@ SEQUENCE_IDX = 0;
 $(document).ready(function() {
     numberOfDays = 15;
     var timeout;
-    function getData(idx, all_days) {
-        var alpha = all_days ? 0.1 : 0.6;
+    function getData(dateStr, instance) {
+        //var alpha = all_days ? 0.1 : 0.6;
+        var alpha = 0.6;
         $('#loaderGif').css("display", "block")
-        $.getJSON(DIFFERENCE_API + '?index=' + idx + '&all=' + all_days)
+        var dateStr = dateStr.replace(/-/g, '')
+        $.getJSON(DIFFERENCE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr)
         .done(function(data){
             $('#loaderGif').css("display", "none")
-            chart.options.title.text = 'ROCO2 - ' + data['title']
+            chart.options.title.text = NPN_DQD.icao + ' - ' + data['title']
             chart.data.datasets[0].data = data['all_obs']
             chart.data.datasets[0].backgroundColor = Chart.helpers.color('#4dc9f6').alpha(alpha).rgbString()
             chart.data.datasets[1].data = data['mean_obs']
@@ -30,13 +32,13 @@ $(document).ready(function() {
             backgroundColor: Chart.helpers.color('#4dc9f6').alpha(0.6).rgbString(),
         },
         {
-            label: 'Mean of Observations',
+            label: 'Mean of Matched Obs',
             data: [{}],
             backgroundColor: Chart.helpers.color('#ff0000').alpha(1).rgbString(),
             borderColor: 'black'
         },
         {
-            label: 'Standard Deviation of Observations',
+            label: 'Standard Deviation of Matched Obs',
             data: [{}],
             backgroundColor: Chart.helpers.color('#7fff00').alpha(1).rgbString(),
             borderColor: 'black'
@@ -84,33 +86,26 @@ $(document).ready(function() {
         data: data,
         options: options
     });
-    getData(0, false);
-    SEQUENCE_IDX += 1;
-    $("#animate").on('click', function() {
-        if ($(this).attr('alt') == 'off') {
-            $(this).attr('alt', 'on')
-            $(this).html('Pause Animation ||')
-            timeout = setInterval(function() {
-                var idx = (SEQUENCE_IDX % (numberOfDays + 1))
-                SEQUENCE_IDX += 1
-                getData(idx);
-            }, 1000);
-        }
-        else {
-            clearTimeout(timeout)
-            $(this).attr('alt', 'off')
-            $(this).html('Start Animation |>')
-        }
+    NPN_DQD.initDateList()
+    var datepickerOpts = {
+        dateFormat: 'yy-mm-dd',
+        defaultDate: new Date(),
+        beforeShowDay: NPN_DQD.checkIfAvailable,
+        onSelect: getData
+    }
+    $('#selectSite').change(function() {
+        var selectedIcao = $(this).val();
+        NPN_DQD.icao = selectedIcao;
+        NPN_DQD.getDates(selectedIcao);
     });
-    console.log($('#nextDay'))
-    $("#nextDay").on('click', function() {
+    $('#selectSite').selectmenu();
+    $('input[name="avg-period-radio"]').checkboxradio({icon:false});
+    $('#selectDate').datepicker(datepickerOpts);
+    $('#selectDate').datepicker('setDate', new Date());
+    $('#nextDay').on('click', function() {
         console.log('ALL')
-        var idx = (SEQUENCE_IDX % (numberOfDays + 1))
-        SEQUENCE_IDX += 1
-        getData(idx, false);
+        //var idx = (SEQUENCE_IDX % (numberOfDays + 1))
+        ///SEQUENCE_IDX += 1
+        //getData(idx, false);
     });
-    $("#allDays").on('click', function() {
-        getData(0, true);
-    });
-
 });

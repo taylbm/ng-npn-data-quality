@@ -1,40 +1,15 @@
 COMPARE_API = 'http://10.20.58.144:5000/compare'
-NPN_API = 'http://10.20.120.110/npn_api/'
-daysAvailable = [];
-icao = 'TLKA'
-
-function getSites() {
-    d = new Date;
-    $.getJSON(NPN_API + 'sites?format=json&t_=' + d.getTime())
+function getData(dateStr, instance) {
+    var dateStr = dateStr.replace(/-/g, '')
+    $.getJSON(COMPARE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr)
     .done(function(data) {
-        var selectHTML = ''
-        for (i in data) {
-            selectHTML += '<option id="select' + data[i] + '" value="' + data[i] + '">' + data[i] + '</option>'
-        }
-        $('#selectSite').html(selectHTML)
+        console.log(data)
+        hrrrProfile.setData(data['hrrr'])
+        npnProfile.setData(data['npn'])
     })
     .fail(function(error) {
         console.log(error)
     });
-}
-
-function getDates() {
-    d = new Date;
-    var selectedIcao = $('#selectSite').val()
-    var requestIcao = selectedIcao == null ? icao : selectedIcao;
-    $.getJSON(NPN_API + 'dates?icao=' + requestIcao + '&format=json&t_=' + d.getTime())
-    .done(function(data) {
-        daysAvailable = data;
-    })
-    .fail(function(error) {
-        console.log(error)
-    });
-}
-
-function checkIfAvailable(date) {
-    dateStr = date.toISOString().split('T')[0]
-    dateBool = daysAvailable.includes(dateStr)
-    return [dateBool, "", null]
 }
 
 $(document).ready(function() {
@@ -74,31 +49,19 @@ $(document).ready(function() {
                 speed: {label: "kts", factor: 1.94384}
         }
     });
-    function getData(dateStr, instance) {
-        var dateStr = dateStr.replace(/-/g, '')
-        $.getJSON(COMPARE_API + '?icao=' + icao + '&date=' + dateStr)
-        .done(function(data) {
-            console.log(data)
-            hrrrProfile.setData(data['hrrr'])
-            npnProfile.setData(data['npn'])
-        })
-        .fail(function(error) {
-            console.log(error)
-        });
-    }
-
-    getSites();
-    getDates();
+    NPN_DQD.initDateList()
     var datepickerOpts = {
         dateFormat: 'yy-mm-dd',
         defaultDate: new Date(),
-        beforeShowDay: checkIfAvailable,
+        beforeShowDay: NPN_DQD.checkIfAvailable,
         onSelect: getData
     }
     $('#selectSite').change(function() {
         var selectedIcao = $(this).val();
-        icao = selectedIcao;
+        NPN_DQD.icao = selectedIcao;
+        NPN_DQD.getDates(selectedIcao);
     });
+    $('#selectSite').selectmenu();
     $('#selectDate').datepicker(datepickerOpts);
     $('#selectDate').datepicker('setDate', new Date());
 });

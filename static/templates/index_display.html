@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+    <head>
+        <title>NPN Data Quality</title>
+        <link rel="stylesheet" type="text/css" href="static/css/style.css">
+        <link rel="stylesheet" type="text/css" href="static/css/jquery-ui.css">
+    </head>
+    <body>
+        <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
+        <script type="text/javascript" src="static/js/lib/jquery-ui.js"></script>
+        <script type="text/javascript" src="static/js/index.js"></script>
+        <script type="text/javascript" defer src="static/js/wind_profiler.js"></script>
+        <div id="pageHeader">
+            <div id="pageHeaderImageDiv">
+                <img id="pageHeaderImage" src="static/img/ROC_logo.png">
+            </div>
+            <div id="pageHeaderTitleDiv">NPN Data Quality</div>
+        </div>
+        <div id="controlsHeader">
+            <button class="ui-button ui-widget ui-corner-all" style="display:inline-block;" id="nextDay">Next Day +</button>
+            <button class="ui-button ui-widget ui-corner-all" style="display:inline-block;" alt="off" id="animate">Start Animation |></button>
+            <select id="selectSite"></select>
+            <input id="selectDate" type="text"></option>
+        </div>
+        <div class="container">
+            <div id="pageNavTabs" style="display:inline-block">
+                <ul>
+                    <li><a href="#compare">Compare Profiles</a></li>
+                    <li><a href="#difference">Difference Profiles</a></li>
+                    <li><a href="#availability">Data Availability</a></li>
+                </ul>
+                <div id="compare">
+                    <div style="position:absolute;width:1300px;height:420px;top:45px">
+                        <div id="profilerCanvas"></div>
+                    </div>
+                    <div style="position:absolute;width:1300px;height:450px;top:465px;">
+                        <div id="hrrrCanvas"></div>
+                    </div>
+               </div>
+            </div>
+        </div>
+    </body>
+</html>

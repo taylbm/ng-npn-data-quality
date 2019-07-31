@@ -52,7 +52,7 @@ $(document).ready(function() {
                 display: true,
                 scaleLabel: {
                     display: true,
-                    labelString: 'Smoothed Data Availability (%)',
+                    labelString: 'Data Availability (%)',
                     fontSize: 14
                 },
                 ticks: {

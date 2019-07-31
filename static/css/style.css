@@ -5,7 +5,7 @@ body, html{
 	font-family: Arial, Helvetica, sans-serif, monospace; 
 	font-size: 14px; 
 }
-.container{ display: flex; flex-direction: column; box-sizing: border-box; position: relative; height: 965px; min-height: 850px; width: 1300px; min-width: 1300px; margin: 0 auto 5px auto; padding: 0; background-color: white; text-align: left; overflow: hidden; border: 1px solid #828282; border-top: 0 solid black;}
+.container{ box-sizing: border-box; position: relative; height: 965px; min-height: 850px; width: 1300px; min-width: 1300px; margin: 0 auto 5px auto; padding: 0; background-color: white; text-align: left; overflow: hidden; border: 1px solid #828282; border-top: 0 solid black;}
 #pageHeader{ 
 	box-sizing: border-box;
 	position: relative;
@@ -39,4 +39,8 @@ body, html{
 }
 .ui-datepicker{
         z-index: 100 !important;
+}
+#controlsHeader{
+        width: 1300px;
+        margin: 0 auto;
 }
