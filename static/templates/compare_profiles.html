@@ -1,32 +1,59 @@
 <!doctype html>
 <html>
     <head>
-        <title>NPN Data Quality - Compare Profiles</title>
+        <title>NPN Data Quality</title>
         <link rel="stylesheet" type="text/css" href="static/css/style.css">
-        <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+        <link rel="stylesheet" type="text/css" href="static/css/jquery-ui.css">
     </head>
     <body>
         <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
-        <script type="text/javascript" src="static/js/lib/jquery-ui.js"></script>
+        <script type="text/javascript" src="static/js/lib/jquery-ui@1.12.1.js"></script>
         <script type="text/javascript" src="static/js/common.js"></script>
-        <script type="text/javascript" src="static/js/compare_profiles.js"></script>
         <script type="text/javascript" defer src="static/js/wind_profiler.js"></script>
+        <script src="static/js/lib/chart.js@2.8.0"></script>
         <div id="pageHeader">
             <div id="pageHeaderImageDiv">
                 <img id="pageHeaderImage" src="static/img/ROC_logo.png">
             </div>
-            <div id="pageHeaderTitleDiv">NPN Data Quality - Compare Profiles</div>
+            <div id="pageHeaderTitleDiv">NPN Data Quality</div>
         </div>
-        <div class="container">
-            <div style="margin:10px">
-                <select id="selectSite"></select>
-                <input id="selectDate" type="text"></option>
+        <div id="tabs" class="container">
+            <ul>
+                <li><a id="profiles" href="#profileComparison">Compare Profiles</a></li>
+                <li><a id="differences" href="#speedDifferences">Speed Differences</a></li>
+                <li tabindex="0"><a id="availability" href="#heightAvailability">Height Availability</a></li>
+                <li><select id="selectSite"></select></li>
+                <li><input autocomplete="off" id="selectDate" type="text"></option></li>
+                <div id="avgPeriod" style="display:none">
+                    <div style="display:inline-block">Averaging Time Period:</div>
+                    <div style="display:inline-block" class="widget">
+                        <label for="oneDay">1 Day</label>
+                        <input type="radio" name="avg-period-radio" id="oneDay">
+                        <label for="oneWeek">1 Week</label>
+                        <input type="radio" name="avg-period-radio" id="oneWeek">
+                        <label for="oneMonth">1 Month</label>
+                        <input type="radio" name="avg-period-radio" id="oneMonth">
+                    </div>
+                </div>
+            </ul>
+            <div id="profileComparison">
+                <div style="position:absolute;width:1280px;height:420px;top:45px">
+                    <div id="profilerCanvas"></div>
+                </div>
+                <div style="position:absolute;width:1280px;height:450px;top:465px;">
+                    <div id="hrrrCanvas"></div>
+                </div>
+                <script type="text/javascript" src="static/js/compare_profiles.js"></script>
             </div>
-            <div style="position:absolute;width:1300px;height:420px;top:45px">
-                <div id="profilerCanvas"></div>
+            <div id="speedDifferences">
+                <img id="loaderGif" src="static/img/ajax-loader.gif"></img>
+                <canvas id="differencesPlotCanvas"></canvas>
+                <script type="text/javascript" src="static/js/difference_profiles.js"></script>
             </div>
-            <div style="position:absolute;width:1300px;height:450px;top:465px;">
-                <div id="hrrrCanvas"></div>
+            <div id="heightAvailability">
+                <img id="loaderGif" src="static/img/ajax-loader.gif"></img>
+                <canvas id="availabilityPlotCanvas"></canvas>
+                <script type="text/javascript" src="static/js/availability.js"></script>
             </div>
         </div>
     </body>

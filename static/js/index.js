@@ -1,98 +1,8 @@
-COMPARE_API = 'http://10.20.58.144:5000/compare'
-NPN_API = 'http://10.20.120.110/npn_api/'
-daysAvailable = [];
-icao = 'TLKA'
-
-function initDateList() {
-    d = new Date;
-    var sites = $.getJSON(NPN_API + 'sites?format=json&t_=' + d.getTime())
-    .done(function(data) {
-        icao = data[0]
-        var selectHTML = ''
-        for (i in data) {
-            selectHTML += '<option id="select' + data[i] + '" value="' + data[i] + '">' + data[i] + '</option>'
-        }
-        $('#selectSite').html(selectHTML)
-    })
-    .fail(function(error) {
-        console.log(error)
-    });
-    var dates = sites.then(function(siteData) {
-        $.getJSON(NPN_API + 'dates?icao=' + siteData[0] + '&format=json&t_=' + d.getTime())
-        .done(function(dateData) {
-            console.log(dateData)
-            daysAvailable = dateData;
-        })
-        .fail(function(error) {
-            console.log(error)
-        });
-    });
-}
-
-
-function getSites() {
-    d = new Date;
-    $.getJSON(NPN_API + 'sites?format=json&t_=' + d.getTime())
-    .done(function(data) {
-        var selectHTML = ''
-        for (i in data) {
-            selectHTML += '<option id="select' + data[i] + '" value="' + data[i] + '">' + data[i] + '</option>'
-        }
-        $('#selectSite').html(selectHTML)
-    })
-    .fail(function(error) {
-        console.log(error)
-    });
-}
-
-function getDates() {
-    d = new Date;
-    var selectedIcao = $('#selectSite').val()
-    var requestIcao = selectedIcao == null ? icao : selectedIcao;
-    $.getJSON(NPN_API + 'dates?icao=' + requestIcao + '&format=json&t_=' + d.getTime())
-    .done(function(data) {
-        daysAvailable = data;
-    })
-    .fail(function(error) {
-        console.log(error)
-    });
-}
-
-function checkIfAvailable(date) {
-    dateStr = date.toISOString().split('T')[0]
-    dateBool = daysAvailable.includes(dateStr)
-    return [dateBool, "", null]
-}
-
+hourlyAvailabilityGauge = null
+meanDifferenceGauge = null
+medianAvailabilityGauge = null
+overallDQIGauge = null
 $(document).ready(function() {
-    function getData(dateStr, instance) {
-        var dateStr = dateStr.replace(/-/g, '')
-        $.getJSON(COMPARE_API + '?icao=' + icao + '&date=' + dateStr)
-        .done(function(data) {
-            console.log(data)
-            hrrrProfile.setData(data['hrrr'])
-            npnProfile.setData(data['npn'])
-        })
-        .fail(function(error) {
-            console.log(error)
-        });
-    }
-    getSites();
-    getDates();
-    var datepickerOpts = {
-        dateFormat: 'yy-mm-dd',
-        defaultDate: new Date(),
-        beforeShowDay: checkIfAvailable,
-        onSelect: getData
-    }
-    $('#selectSite').change(function() {
-        var selectedIcao = $(this).val();
-        icao = selectedIcao;
-    });
-    $('#selectDate').datepicker(datepickerOpts);
-    $('#selectDate').datepicker('setDate', new Date());
-    $('#pageNavTabs').tabs();
-    $('#selectSite').selectmenu();
     var defaultSectors = {
         percents: true,
         ranges: [{
@@ -138,31 +48,32 @@ $(document).ready(function() {
         bottomwidth: 6,
         color: '#8e8e93',
     }
-    var gauge1 = new JustGage({
-        id: "data-received-gauge",
-        value: 19,
+    hourlyAvailabilityGauge = new JustGage({
+        id: "hourly-availability-gauge",
+        value: 0,
         min: 0,
-        max: 24,
+        max: 100,
         donut: true,
         pointer: true,
-        label: "Hours",
+        label: "(%)",
         customSectors: defaultSectors,
         pointerOptions: defaultPointerOpts
     });
-    var gauge2 = new JustGage({
+    meanDifferenceGauge = new JustGage({
         id: "mean-diff-gauge",
-        value: -2,
+        value: 0,
         min: -10,
         max: 10,
         pointer: true,
         fromZero: true,
+        decimals: true,
         pointerOptions: defaultPointerOpts,
         customSectors: diffSectors,
         label: "(m/s)"
     });
-    var gauge3 = new JustGage({
-        id: "max-availability-gauge",
-        value: 90,
+    medianAvailabilityGauge = new JustGage({
+        id: "median-height-availability-gauge",
+        value: 0,
         min: 0,
         max: 100,
         pointer: true,
@@ -171,14 +82,35 @@ $(document).ready(function() {
         pointerOptions: defaultPointerOpts,
         label: "(%)"
     });
-    var gauge4 = new JustGage({
+    overallDQIGauge = new JustGage({
         id: "overall-dq-gauge",
-        value: 95,
+        value: 0,
         min: 0,
         max: 100,
         pointer: true,
         customSectors: defaultSectors,
         pointerOptions: defaultPointerOpts,
         label: "(%)"
+    });
+    NPN_DQD.initFunctions(false);
+    $("#animate").on('click', function() {
+        var daysIterator = NPN_DQD.daysAvailable[Symbol.iterator]();
+        if ($(this).attr('alt') == 'off') {
+            $(this).attr('alt', 'on')
+            $(this).html('Pause Animation ||')
+            timeout = setInterval(function() {
+                var nextDay = daysIterator.next()
+                if (nextDay.done) {
+                    daysIterator = NPN_DQD.daysAvailable[Symbol.iterator]();
+                    nextDay = daysIterator.next()
+                }
+                NPN_DQD.dashboard(nextDay.value, null)
+            }, 1000);
+        }
+        else {
+            clearTimeout(timeout)
+            $(this).attr('alt', 'off')
+            $(this).html('Start Animation |>')
+        }
     });
 });

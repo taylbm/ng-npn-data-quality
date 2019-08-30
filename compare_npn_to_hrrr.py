@@ -7,6 +7,8 @@ Author: Brandon Taylor
 
 Date: 20190411
 
+Last Modified: 20190829
+
 """
 import csv, os, math, json
 import requests, time
@@ -15,6 +17,7 @@ from logging.config import dictConfig
 from datetime import datetime
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+from scipy.interpolate import interp1d
 from flask import Flask, request
 from flask_cors import CORS
 import ncepbufr
@@ -22,14 +25,10 @@ import ncepbufr
 APP = Flask(__name__)
 CORS(APP)
 
-PRIMARY_NPN_API = 'http://rocstar1/npn_api/'
-BACKUP_NPN_API = 'http://rocstar2/npn_api/'
+PRIMARY_NPN_API = 'http://10.20.120.73/npn_api/'
+BACKUP_NPN_API = 'http://rocstar1/npn_api/'
 AK_DATA_DIR = '../hrrr_ak/BUFR'
 CONUS_DATA_DIR = '../hrrr_conus/BUFR'
-DEMO_DATA_DIR = '../data'
-NPN_ICAO = 'ROCO2'
-WMO_ID = '723570'
-DATES_DIRS = sorted(os.listdir(os.path.join(DEMO_DATA_DIR, NPN_ICAO, 'CSV')))
 LOG_FILE = '/tmp/npn-dq-tool.log'
 
 WMO_SITE_IDS = {'TLKA': '702510',
@@ -97,6 +96,7 @@ def read_ncep_bufr(fname):
     Extracts and converts height and wind speed/direction.
     """
     data_exists = False
+    empty_array = zip([0], [0], [0])
     try:
         bufr = ncepbufr.open(fname)
         while bufr.advance() == 0:
@@ -115,18 +115,22 @@ def read_ncep_bufr(fname):
             elev = 0.0
         bufr.close()
         pressure_hpa = pressure_pa / 100.
-        height = np.around(pressure_to_height(pressure_hpa, elev), decimals=1)
+        height = np.rint(pressure_to_height(pressure_hpa, elev))
         direction = np.around(wind_direction(u_wind, v_wind), decimals=1)
-        speed = np.around(wind_speed(u_wind, v_wind), decimals=1)
+        speed = np.around(wind_speed(u_wind, v_wind), decimals=2)
         return zip(height, speed, direction)
     except IOError as err:
         print 'IO error reading NCEP BUFR file %s, skipping for now' % err
         APP.logger.exception(err)
-        return zip([0], [0], [0])
+        return empty_array
     except IndexError as err:
         print 'Index error while reading NCEP BUFR file %s, skipping for now' % err
         APP.logger.exception(err)
-        return zip([0], [0], [0])
+        return empty_array
+    except:
+        print 'Unknown error: %s, skipping' & err
+        APP.logger.exception(err)
+        return empty_array
 
 def read_npn_csv(fname):
     """
@@ -169,6 +173,9 @@ def calc_min_max(npn_heights, hrrr_heights):
         return (1e4, 0)
 
 def retrieve_hrrr_winds(date, hour, icao):
+    """
+    Reads in hrrr bufr sounding from local archive
+    """
     wmo_id = WMO_SITE_IDS[icao]
     hrrr_fname = 'bufr.' + wmo_id + '.' + date + hour
     data_dir = CONUS_DATA_DIR if icao == 'ROCO' else AK_DATA_DIR
@@ -176,31 +183,132 @@ def retrieve_hrrr_winds(date, hour, icao):
     hrrr_data_zipped = read_ncep_bufr(hrrr_fpath)
     return hrrr_data_zipped
 
-def retrieve_npn_winds(date, icao):
-    winds = 'winds?hourly=t&hours=24&enddate=' + date + '2359&icao=' + icao
+def retrieve_npn_winds(date, icao, hours=24):
+    """
+    Reads in npn data from ROCSTAR.
+    Tries the primary ROCSTAR server first with timeout,
+    then tries the backup ROCSTAR.
+    """
+    timeout = hours / 10.
+    winds = 'winds?hourly=t&hours=' + str(hours) + '&enddate=' + date + '2359&icao=' + icao
     try:
-        primary_request = requests.get(PRIMARY_NPN_API + winds, timeout=2.5)
+        primary_request = requests.get(PRIMARY_NPN_API + winds, timeout=timeout)
         return primary_request.json()
     except requests.exceptions.RequestException as e:
         APP.logger.exception(e)
+        print 'Primary timed out!'
     try:
-        backup_request = requests.get(BACKUP_NPN_API + winds, timeout=2.5)
+        backup_request = requests.get(BACKUP_NPN_API + winds, timeout=timeout)
         return backup_request.json()
     except requests.exceptions.RequestException as e:
         APP.logger.exception(e)
+        print 'Backup timed out. Fail!'
     return None
 
-def format_path_and_read(date, hour, npn_only=False):
-    npn_fname = NPN_ICAO + '-' + date + hour + '0000.npn.hrlywind.csv'
-    hrrr_fname = 'bufr.' + WMO_ID + '.' + date + hour
-    npn_fpath = os.path.join(DEMO_DATA_DIR, NPN_ICAO, 'CSV', date, npn_fname)
-    hrrr_fpath = os.path.join(DEMO_DATA_DIR, date, WMO_ID, hrrr_fname)
-    npn_data_zipped = read_npn_csv(npn_fpath)
-    hrrr_data_zipped = read_ncep_bufr(hrrr_fpath)
-    return npn_data_zipped if npn_only else (npn_data_zipped, hrrr_data_zipped)
+def hourly(npn_data, hours):
+    """
+    Returns the percentage availability of hourly data encountered,
+    from given expected number of hours.
+    """
+    hourly_availability = (len(npn_data) / float(hours)) * 100
+    return hourly_availability
+
+def difference(date, icao, hours, overall=False, npn_data=False):
+    """
+    Computes difference between NPN data and HRRR data by interpolating to 
+    set height levels, starting at 100 meters, going to 10 km, at 100 meter intervals.
+    """
+    verification_heights = np.arange(100., 10000, 100.)
+    # accounts for extra data due to system restarts
+    extra_data = 50
+    verification = np.zeros((hours + extra_data, verification_heights.shape[0]))
+    verification.fill(np.nan)
+    if not npn_data:
+        npn_data = retrieve_npn_winds(date, icao, hours=hours)
+    for hour, npn_hourly in enumerate(npn_data):
+        npn_hourly_data = npn_hourly['data']
+        timestamp = npn_hourly['timestamp']
+        utc_dt = datetime.utcfromtimestamp(timestamp)
+        hour_str = '%02d' % utc_dt.hour
+        iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
+        hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, icao)
+        hrrr_hourly_data = [{"SPD": speed, "DIR": direction,
+                             "HT": height}
+                            for height, speed, direction
+                            in hrrr_zip if speed < 999]
+        hrrr_heights = np.asarray([level["HT"] for level in hrrr_hourly_data])
+        npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
+        hrrr_speed = np.asarray([level["SPD"] for level in hrrr_hourly_data])
+        npn_speed = np.asarray([level["SPD"] for level in npn_hourly_data])
+        if hrrr_speed.shape[0] < 2 or npn_speed.shape[0] < 2:
+            hrrr_speed_interp = np.full_like(verification_heights, np.nan, dtype=np.double)
+            npn_speed_interp = np.full_like(verification_heights, np.nan, dtype=np.double)
+            speed_diff = np.full_like(verification_heights, np.nan, dtype=np.double)
+        else:
+            hrrr_speed_interp1d = interp1d(hrrr_heights, hrrr_speed, bounds_error=False)
+            npn_speed_interp1d = interp1d(npn_heights, npn_speed, bounds_error=False)
+            hrrr_speed_interp = hrrr_speed_interp1d(verification_heights)
+            npn_speed_interp = npn_speed_interp1d(verification_heights)
+            speed_diff = hrrr_speed_interp - npn_speed_interp
+        verification[hour] = speed_diff
+    verification = np.around(verification, decimals=2)
+    verification_mean = np.around(np.nanmean(verification, axis=0), decimals=1)
+    verification_std = np.around(np.nanstd(verification, axis=0), decimals=1)
+    std_obs = [{'x': std, 'y': verification_heights[idx]} for idx, std in enumerate(verification_std) if not np.isnan(std)]
+    mean_obs = [{'x': mean, 'y': verification_heights[idx]} for idx, mean in enumerate(verification_mean) if not np.isnan(mean)]
+    all_obs = [{'x': speed, 'y': verification_heights[idx]} for hour in verification for idx, speed in enumerate(hour) if not np.isnan(speed)]
+    overall_mean = np.nanmean(verification_mean)
+    overall_std = np.nanstd(verification_std)
+    utc_dt_start = datetime.utcfromtimestamp(npn_data[0]['timestamp'])
+    start_date_str = utc_dt_start.strftime('%Y-%m-%d')
+    end_date_str = utc_dt.strftime('%Y-%m-%d')
+    title_str = start_date_str + ' to ' + end_date_str if hours > 24 else end_date_str
+    if overall:
+        return overall_mean
+    else:
+        return (all_obs, mean_obs, std_obs, title_str)
+
+def available(date, icao, hours, overall=False, npn_data=False):
+    """
+    Computes height availability
+    """
+    if not npn_data:
+        npn_data = retrieve_npn_winds(date, icao, hours=hours)
+    heights = defaultdict(list)
+    for hour, npn_hourly in enumerate(npn_data):
+        npn_hourly_data = npn_hourly['data']
+        npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
+        npn_speed = np.asarray([level["SPD"] for level in npn_hourly_data])
+        for idx, height in enumerate(npn_heights):
+            height_int = int(height)
+            heights[height_int].append(npn_speed[idx])
+    for height in heights:
+        H = heights[height]
+        H = np.asarray(H, dtype=np.float32)
+        length_data = H.shape[0]
+        heights[height] = length_data / float(hours)
+    heights = OrderedDict(sorted(heights.iteritems(), key=lambda x: x[0]))
+    availability = [{'x': availability, 'y': height} for height, availability in heights.iteritems()]
+    available = [available['x'] for available in availability]
+    available_smoothed = np.around(gaussian_filter1d(available, 4), decimals=3)
+    median_available = round(np.median(np.asarray(available)), 2)
+    availability_smoothed = [{'x': available_smoothed[idx], 'y': available['y']} for idx, available in enumerate(availability)]
+    utc_dt_start = datetime.utcfromtimestamp(npn_data[0]['timestamp'])
+    utc_dt_end = datetime.utcfromtimestamp(npn_data[-1]['timestamp'])
+    start_date_str = utc_dt_start.strftime('%Y-%m-%d')
+    end_date_str = utc_dt_end.strftime('%Y-%m-%d')
+    title_str = start_date_str + ' to ' + end_date_str if hours > 24 else end_date_str
+    if overall:
+        return median_available * 100
+    else:
+        return (availability, availability_smoothed, title_str)
+
 
 @APP.route('/compare')
 def compare_profiles():
+    """
+    endpoint for compare method
+    """
     hrrr_out = []
     date = request.args.get('date')
     icao = request.args.get('icao')
@@ -229,86 +337,45 @@ def compare_profiles():
 
 @APP.route('/difference')
 def difference_profiles():
-    all_days = True if request.args.get('all') == 'true' else False
-    verification_heights = np.arange(400., 16000, 100.)
-    days = len(DATES_DIRS) if all_days else 1
-    verification = np.zeros((days, 24, verification_heights.shape[0]))
+    """
+    endpoint for difference method
+    """
     date = request.args.get('date')
     icao = request.args.get('icao')
-    npn_data = retrieve_npn_winds(date, icao)
-    title = 'All ' + str(days) + ' days' if all_days else date
-    for hour, npn_hourly in enumerate(npn_data):
-        npn_hourly_data = npn_hourly['data']
-        timestamp = npn_hourly['timestamp']
-        utc_dt = datetime.utcfromtimestamp(timestamp)
-        hour_str = '%02d' % utc_dt.hour
-        iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
-        hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, icao)
-        hrrr_hourly_data = [{"SPD": speed, "DIR": direction,
-                             "HT": height}
-                            for height, speed, direction
-                            in hrrr_zip if speed < 999]
-        hrrr_heights = np.asarray([level["HT"] for level in hrrr_hourly_data])
-        npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
-        hrrr_speed = np.asarray([level["SPD"] for level in hrrr_hourly_data])
-        npn_speed = np.asarray([level["SPD"] for level in npn_hourly_data])
-        if hrrr_speed.shape[0] == 0 or npn_speed.shape[0] == 0:
-            hrrr_speed_interp = np.full_like(verification_heights, np.nan, dtype=np.double)
-            npn_speed_interp = np.full_like(verification_heights, np.nan, dtype=np.double)
-            speed_diff = np.full_like(verification_heights, np.nan, dtype=np.double)
-        else:
-            hrrr_speed_interp = np.interp(verification_heights, hrrr_heights, hrrr_speed)
-            npn_speed_interp = np.interp(verification_heights, npn_heights, npn_speed)
-            speed_diff = hrrr_speed_interp - npn_speed_interp
-        verification[0][hour] = speed_diff
-    verification = np.around(verification, decimals=2)
-    verification_mean = np.around(np.nanmean(verification, axis=(0,1)), decimals=1)
-    verification_std = np.around(np.nanstd(verification, axis=(0,1)), decimals=1)
-    std_obs = [{'x': std, 'y': verification_heights[idx]} for idx, std in enumerate(verification_std) if not np.isnan(std)]
-    mean_obs = [{'x': mean, 'y': verification_heights[idx]} for idx, mean in enumerate(verification_mean) if not np.isnan(mean)]
-    all_obs = [{'x': speed, 'y': verification_heights[idx]} for day in verification for hour in day for idx, speed in enumerate(hour) if not np.isnan(speed)]
-    return json.dumps({'all_obs': all_obs, 'mean_obs': mean_obs, 'std_obs': std_obs, 'title': title})
+    hours = int(request.args.get('hours'))
+    all_obs, mean_obs, std_obs, title_str = difference(date, icao, hours)
+    return json.dumps({'all_obs': all_obs, 'mean_obs': mean_obs, 
+                       'std_obs': std_obs, 'title': title_str}) 
 
 @APP.route('/available')
 def data_availability():
-    all_days = True if request.args.get('all') == 'true' else False
-    days = len(DATES_DIRS) if all_days else 1
-    index = int(request.args.get('index'))
-    date_directories = DATES_DIRS if all_days else [DATES_DIRS[index]]
-    title = 'All ' + str(days) + ' days' if all_days else DATES_DIRS[index]
-    heights = defaultdict(list)
-    for date_idx, date in enumerate(date_directories):
-        for hour in range(24):
-            hour_str = '%02d' % hour
-            datetime_obj = datetime.strptime(date + hour_str, '%Y%m%d%H')
-            timestamp = (datetime_obj - datetime(1970, 1, 1)).total_seconds()
-            npn_zip = format_path_and_read(date, hour_str, npn_only=True)
-            for height, speed , _ in npn_zip:
-                height_int = int(height)
-                heights[height_int].append(speed)
-    for height in heights:
-        H = heights[height]
-        H = np.asarray(H, dtype=np.float32)
-        H[H == 999.9] = np.nan
-        valid_data = sum(~np.isnan(H))
-        length_data = float(H.shape[0])
-        heights[height] = round(valid_data / length_data, 2)
-    heights = OrderedDict(sorted(heights.iteritems(), key=lambda x: x[0]))
-    availability = [{'x': availability, 'y': height} for height, availability in heights.iteritems()]
-    available = [available['x'] for available in availability]
-    available_smoothed = np.around(gaussian_filter1d(available, 4), decimals=3)
-    max_available = np.max(available_smoothed)
-    print max_available
-    availability_smoothed = [{'x': available_smoothed[idx], 'y': available['y']} for idx, available in enumerate(availability)]
-    return json.dumps({'availability_smoothed': availability_smoothed, 
-                       'availability':availability, 'title': title})
-
-@APP.route('/overview')
-def data_received():
+    """
+    endpoint for availability method
+    """
     date = request.args.get('date')
     icao = request.args.get('icao')
-    npn_data = retrieve_npn_winds(date, icao)
-    return None
+    hours = int(request.args.get('hours'))
+    availability, availability_smoothed, title_str = available(date, icao, hours)
+    return json.dumps({'availability': availability,
+                       'availability_smoothed': availability_smoothed, 'title': title_str})
+
+@APP.route('/overview')
+def overview():
+    """
+    endpoint for dashboard overview
+    """
+    date = request.args.get('date')
+    icao = request.args.get('icao')
+    hours = int(request.args.get('hours'))
+    npn_data = retrieve_npn_winds(date, icao, hours=hours)
+    hourly_availability = hourly(npn_data, hours)
+    mean_difference = difference(date, icao, hours, overall=True, npn_data=npn_data)
+    median_availability = available(date, icao, hours, overall=True, npn_data=npn_data)
+    overall_dqi = ((hourly_availability * 0.25) + (((1 - abs(mean_difference) / 10.) * 100) * 0.5) + (median_availability * 0.25))
+    return json.dumps({'mean_difference': mean_difference, 
+                      'median_availability': median_availability,
+                      'hourly_availability': hourly_availability,
+                      'overall_dqi':overall_dqi})
 
 @APP.route('/')
 def index_html():

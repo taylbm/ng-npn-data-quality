@@ -1,29 +1,6 @@
-DIFFERENCE_API = "http://10.20.58.144:5000/difference"
-SEQUENCE_IDX = 0;
+differencesChart = null;
 $(document).ready(function() {
-    numberOfDays = 15;
-    var timeout;
-    function getData(dateStr, instance) {
-        //var alpha = all_days ? 0.1 : 0.6;
-        var alpha = 0.6;
-        $('#loaderGif').css("display", "block")
-        var dateStr = dateStr.replace(/-/g, '')
-        $.getJSON(DIFFERENCE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr)
-        .done(function(data){
-            $('#loaderGif').css("display", "none")
-            chart.options.title.text = NPN_DQD.icao + ' - ' + data['title']
-            chart.data.datasets[0].data = data['all_obs']
-            chart.data.datasets[0].backgroundColor = Chart.helpers.color('#4dc9f6').alpha(alpha).rgbString()
-            chart.data.datasets[1].data = data['mean_obs']
-            chart.data.datasets[2].data = data['std_obs']
-            chart.update()
-        })
-        .fail(function(error){
-            console.log(error)
-            $('#loaderGif').css("display", "none")
-        });
-    }
-    var ctx = $('#plotCanvas')
+    var ctx = $('#differencesPlotCanvas')
     var data = {
         datasets: [
         {
@@ -81,31 +58,9 @@ $(document).ready(function() {
             }]
         }
     }
-    var chart = new Chart(ctx, {
+    differencesChart = new Chart(ctx, {
         type: 'scatter',
         data: data,
         options: options
-    });
-    NPN_DQD.initDateList()
-    var datepickerOpts = {
-        dateFormat: 'yy-mm-dd',
-        defaultDate: new Date(),
-        beforeShowDay: NPN_DQD.checkIfAvailable,
-        onSelect: getData
-    }
-    $('#selectSite').change(function() {
-        var selectedIcao = $(this).val();
-        NPN_DQD.icao = selectedIcao;
-        NPN_DQD.getDates(selectedIcao);
-    });
-    $('#selectSite').selectmenu();
-    $('input[name="avg-period-radio"]').checkboxradio({icon:false});
-    $('#selectDate').datepicker(datepickerOpts);
-    $('#selectDate').datepicker('setDate', new Date());
-    $('#nextDay').on('click', function() {
-        console.log('ALL')
-        //var idx = (SEQUENCE_IDX % (numberOfDays + 1))
-        ///SEQUENCE_IDX += 1
-        //getData(idx, false);
     });
 });

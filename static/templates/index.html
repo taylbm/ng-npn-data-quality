@@ -7,8 +7,9 @@
     </head>
     <body>
         <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
-        <script type="text/javascript" src="static/js/lib/jquery-ui.js"></script>
+        <script type="text/javascript" src="static/js/lib/jquery-ui@1.12.1.js"></script>
         <script type="text/javascript" src="static/js/index.js"></script>
+        <script type="text/javascript" src="static/js/common.js"></script>
         <script type="text/javascript" src="static/js/lib/justgage/raphael-2.1.4.min.js"></script>
         <script type="text/javascript" src="static/js/lib/justgage/justgage.js"></script>
         <div id="pageHeader">
@@ -18,23 +19,31 @@
             <div id="pageHeaderTitleDiv">NPN Data Quality</div>
         </div>
         <div id="controlsHeader">
-            <button class="ui-button ui-widget ui-corner-all" style="display:inline-block;" id="nextDay">Next Day +</button>
-            <button class="ui-button ui-widget ui-corner-all" style="display:inline-block;" alt="off" id="animate">Start Animation |></button>
             <select id="selectSite"></select>
-            <input id="selectDate" type="text"></option>
+            <input autocomplete="off" id="selectDate" type="text"></option>
+            <button id="animate" alt="off" class="ui-button ui-widget ui-corner-all">Animate</button>
+            <div style="display:inline-block">Averaging Time Period:</div>
+            <div style="display:inline-block" class="widget">
+                <label for="oneDay">1 Day</label>
+                <input type="radio" name="avg-period-radio" id="oneDay">
+                <label for="oneWeek">1 Week</label>
+                <input type="radio" name="avg-period-radio" id="oneWeek">
+                <label for="oneMonth">1 Month</label>
+                <input type="radio" name="avg-period-radio" id="oneMonth">
+            </div>
         </div>
         <div class="container">
             <div style="display:inline-block">
-                <h2 style="text-align:center">Daily Availability</h2>
-                <div id="data-received-gauge" style="width:430px; height: 320px;"></div>
+                <h2 style="text-align:center">Hourly Availability</h2>
+                <div id="hourly-availability-gauge" style="width:430px; height: 320px;"></div>
             </div>
             <div style="display:inline-block">
                 <h2 style="text-align:center">Mean Difference</h2>
                 <div id="mean-diff-gauge" style="width:430px; height: 320px;"></div>
             </div>
             <div style="display:inline-block">
-                <h2 style="text-align:center">Max Availability</h2>
-                <div id="max-availability-gauge" style="width:430px; height: 320px;"></div>
+                <h2 style="text-align:center">Median Height Availability</h2>
+                <div id="median-height-availability-gauge" style="width:430px; height: 320px;"></div>
             </div>
             <div>
                 <h2 style="text-align:center">Overall Data Quality Index</h2>

@@ -5,7 +5,21 @@ body, html{
 	font-family: Arial, Helvetica, sans-serif, monospace; 
 	font-size: 14px; 
 }
-.container{ box-sizing: border-box; position: relative; height: 965px; min-height: 850px; width: 1300px; min-width: 1300px; margin: 0 auto 5px auto; padding: 0; background-color: white; text-align: left; overflow: hidden; border: 1px solid #828282; border-top: 0 solid black;}
+.container{ 
+        box-sizing: border-box;
+        position: relative;
+        height: 965px;
+        min-height: 850px;
+        width: 1300px;
+        min-width: 1300px;
+        margin: 0 auto 5px auto;
+        padding: 0;
+        background-color: white;
+        text-align: left;
+        overflow: hidden;
+        border: 1px solid #828282;
+            border-top: 0 solid black;
+}
 #pageHeader{ 
 	box-sizing: border-box;
 	position: relative;
@@ -16,7 +30,9 @@ body, html{
 	border: 1px solid #828282; border-bottom: 0 solid black;
 	overflow: show; 
 }
-#pageHeaderImageDiv{ top: 0; height: 40px; width: 40px; margin: 0; padding: 5px; }
+#pageHeaderImageDiv{ top: 0; height: 40px; width: 40px; 
+                     margin: 0; padding: 5px;
+}
 #pageHeader img{ height: 30px; width: 30px; }
 #pageHeaderTitleDiv{
 	height: 40px; width: 100%; line-height: 40px; vertical-align: middle;
@@ -41,6 +57,8 @@ body, html{
         z-index: 100 !important;
 }
 #controlsHeader{
-        width: 1300px;
+        width: 1290px;
+        border: 5px solid rgba(197, 197, 197, 0.2);
+        background: rgba(197, 197, 197, 0.2);
         margin: 0 auto;
 }

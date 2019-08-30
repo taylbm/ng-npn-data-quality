@@ -1,0 +1,3 @@
+0 * * * * /home/btaylor/npn_data_quality/hrrr_conus_dload.sh &>> /tmp/hrrr_conus.log
+0 */3 * * * /home/btaylor/npn_data_quality/hrrr_ak_dload.sh &>> /tmp/hrrr_ak.log
+
