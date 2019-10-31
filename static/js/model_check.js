@@ -5,13 +5,13 @@ displayOptions = {'Speed': {'units': '(m/s)',
                            'ticks': [-180, 180]
                           }
            };
-differencesChart = null;
-differenceVariable = 'Speed'
-function saveDifferenceChart() {
-    var image = differencesChart.toBase64Image()
-    var fname = differencesChart.options.title.text + '.png'
-    $('#saveDifferenceChart').attr('href', image)
-    $('#saveDifferenceChart').attr('download', fname)
+modelChart = null;
+modelVariable = 'Speed'
+function saveChart() {
+    var image = modelChart.toBase64Image()
+    var fname = modelChart.options.title.text + '.png'
+    $('#saveModelChart').attr('href', image)
+    $('#saveModelChart').attr('download', fname)
 }
 
 $(document).ready(function() {
@@ -22,7 +22,7 @@ $(document).ready(function() {
         ctx.fillRect(0, 0, chartInstance.chart.width, chartInstance.chart.height);
       }
     });
-    var ctx = $('#differencesPlotCanvas')
+    var ctx = $('#modelPlotCanvas')
     var data = {
         datasets: [
         {
@@ -46,7 +46,7 @@ $(document).ready(function() {
     }
     var options = {
         animation: {
-            onComplete: saveDifferenceChart
+            onComplete: saveChart
         },
         legend: {
             display: true,
@@ -61,7 +61,7 @@ $(document).ready(function() {
                 afterBody: function(tooltipItem) {
                     var tooltipIndex = tooltipItem[0].index
                     if (tooltipIndex <= 99)
-                        return 'Sample Size:' + NPN_DQD.sampleSize[tooltipIndex]
+                        return 'Sample Size:' + NPN_DQD.modelSampleSize[tooltipIndex]
                     else
                         return
                 }
@@ -72,12 +72,12 @@ $(document).ready(function() {
                 display: true,
                 scaleLabel: {
                     display: true,
-                    labelString: NPN_DQD.differenceVariable + ' Difference [HRRR - NPN] ' + displayOptions[NPN_DQD.differenceVariable]['units'],
+                    labelString: NPN_DQD.modelVariable + ' Difference [HRRR - RAOB] ' + displayOptions[NPN_DQD.modelVariable]['units'],
                     fontSize: 14
                 },
                 ticks: {
-                    min: displayOptions[NPN_DQD.differenceVariable]['ticks'][0],
-                    max: displayOptions[NPN_DQD.differenceVariable]['ticks'][1]
+                    min: displayOptions[NPN_DQD.modelVariable]['ticks'][0],
+                    max: displayOptions[NPN_DQD.modelVariable]['ticks'][1]
                 }
             }],
             yAxes: [{
@@ -94,19 +94,19 @@ $(document).ready(function() {
             }]
         }
     }
-    differencesChart = new Chart(ctx, {
+    modelChart = new Chart(ctx, {
         type: 'scatter',
         data: data,
         options: options
     });
-    $('#selectDifferenceVariable').selectmenu({
+    $('#selectModelVariable').selectmenu({
         change: function() {
-            NPN_DQD.differenceVariable = $(this).val();
-            NPN_DQD['differences'](NPN_DQD.selectedDateStr, null)
-            differencesChart.options.scales.xAxes[0].ticks.min = displayOptions[NPN_DQD.differenceVariable]['ticks'][0]
-            differencesChart.options.scales.xAxes[0].ticks.max = displayOptions[NPN_DQD.differenceVariable]['ticks'][1]
-            differencesChart.options.scales.xAxes[0].scaleLabel.labelString = NPN_DQD.differenceVariable + ' Difference [HRRR - NPN] ' + displayOptions[NPN_DQD.differenceVariable]['units']
-            differencesChart.update()
+            NPN_DQD.modelVariable = $(this).val();
+            NPN_DQD['model'](NPN_DQD.selectedDateStr, null)
+            modelChart.options.scales.xAxes[0].ticks.min = displayOptions[NPN_DQD.modelVariable]['ticks'][0]
+            modelChart.options.scales.xAxes[0].ticks.max = displayOptions[NPN_DQD.modelVariable]['ticks'][1]
+            modelChart.options.scales.xAxes[0].scaleLabel.labelString = NPN_DQD.modelVariable + ' Difference [HRRR - RAOB] ' + displayOptions[NPN_DQD.modelVariable]['units']
+            modelChart.update()
 
         }
     });

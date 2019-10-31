@@ -19,6 +19,22 @@ $(document).ready(function() {
           hi : 100
         }]
     }
+    var standardDeviationSectors = {
+        percents: true,
+        ranges: [{
+          color : "#32cd32",
+          lo : 0,
+          hi : 33
+        },{
+          color : "#ff8c00",
+          lo : 34,
+          hi : 66
+        },{
+          color : "#8b0000",
+          lo : 67,
+          hi : 100
+        }]
+    }
     var diffSectors = {
         ranges: [{
           color : "#8b0000",
@@ -52,11 +68,11 @@ $(document).ready(function() {
         id: "hourly-availability-gauge",
         value: 0,
         min: 0,
-        max: 100,
-        donut: true,
+        max: 10,
         pointer: true,
-        label: "(%)",
-        customSectors: defaultSectors,
+        decimals: true,
+        label: "(m/s)",
+        customSectors: standardDeviationSectors,
         pointerOptions: defaultPointerOpts
     });
     meanDifferenceGauge = new JustGage({

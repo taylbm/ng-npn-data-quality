@@ -44,7 +44,7 @@ $(document).ready(function() {
                 display: true,
                 scaleLabel: {
                     display: true,
-                    labelString: 'Height [AGL] (m)',
+                    labelString: 'Height [MSL] (m)',
                     fontSize: 14
                 }
             }]

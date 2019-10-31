@@ -1,3 +1,4 @@
+//{label: "kts", factor: 1.94384}
 $(document).ready(function() {
     npnProfile = new VerticalWindProfile.Profile("profilerCanvas", {
 	height: 475,
@@ -14,7 +15,7 @@ $(document).ready(function() {
 		grid:{ interval: 60 }
 	},
 	dataUnits: {
-		speed: {label: "kts", factor: 1.94384}
+		speed: {label: "mps", factor: 1}
 	}
     });
     hrrrProfile = new VerticalWindProfile.Profile("hrrrCanvas", {
@@ -32,7 +33,7 @@ $(document).ready(function() {
                 grid:{ interval: 60 }
         },
         dataUnits: {
-                speed: {label: "kts", factor: 1.94384}
+                speed: {label: "mps", factor: 1}
         }
     });
     NPN_DQD.initFunctions(true)
