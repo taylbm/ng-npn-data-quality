@@ -35,7 +35,7 @@ var NPN_DQD = {
                 var selectHTML = ''
                 for (i in data) {
                     selectHTML += '<option id="select' + data[i] + '" value="' + data[i] + '">' + data[i] + '</option>'
-                    selectHTML += '<option id="select' + data[i] + '_xtrahtgs" value="' + data[i] + '_xtrahtgs">' + data[i] + '_xtrahgts</option>'
+                    selectHTML += '<option id="select' + data[i] + '_xtrahtgs" value="' + data[i] + '_xtrahtgs">' + data[i] + '_Build3</option>'
                 }
                 $('#selectSite').html(selectHTML)
             });
@@ -75,6 +75,7 @@ var NPN_DQD = {
         checkIfAvailable: function(date) {
             dateStr = date.toISOString().split('T')[0]
             dateBool = NPN_DQD.daysAvailable.includes(dateStr)
+            dateBool = dateStr.includes("2017") ? true : dateBool
             return [dateBool, "", null]
         },
         profiles: function getData(dateStr, instance) {
@@ -86,6 +87,7 @@ var NPN_DQD = {
                 $('#loaderGif').css('display', 'none')
                 hrrrProfile.setData(data['hrrr'])
                 npnProfile.setData(data['npn'])
+                $('#max-height').spinner("value", data['global_max_ht'])
             })
             .fail(function(error) {
                 $('#loaderGif').css('display', 'none')
@@ -214,9 +216,11 @@ var NPN_DQD = {
                         }
                         if (avgTabs.includes(tabName)) {
                             $('#avgPeriod').css('display', 'inline-block')
+                            $('#maxHeight').css('display', 'none')
                         }
                         else {
                             $('#avgPeriod').css('display', 'none')
+                            $('#maxHeight').css('display', 'inline-block')
                         }
                     }
                 });

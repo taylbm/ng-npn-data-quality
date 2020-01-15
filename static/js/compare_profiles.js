@@ -37,4 +37,11 @@ $(document).ready(function() {
         }
     });
     NPN_DQD.initFunctions(true)
+    $('#setMaxHeight').button().click(function()
+    {
+        var maxHeight = $('#max-height').spinner("value")
+        npnProfile.setMaxMinHeight(0, maxHeight, true)
+        hrrrProfile.setMaxMinHeight(0, maxHeight, true)
+    });
+    $('#max-height').spinner();
 });

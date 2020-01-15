@@ -161,7 +161,7 @@
 			padding : 0,
 			text : "",			
 			fontColor: "black",
-			fontSize: "90%", //px, em, or %
+			fontSize: "85%", //px, em, or %
 			fontFamily : "arial",
 			fontWeight : "normal",
 			fontStyle : "bold",

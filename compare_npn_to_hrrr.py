@@ -7,7 +7,7 @@ Author: Brandon Taylor
 
 Date: 20190411
 
-Last Modified: 20191031
+Last Modified: 20200115
 
 """
 import csv, os, math, json
@@ -21,17 +21,20 @@ from scipy.interpolate import interp1d
 from flask import Flask, request
 from flask_cors import CORS
 import ncepbufr
+import sqlite3
 
 APP = Flask(__name__)
 CORS(APP)
 
 XTRA_HGTS_DIR = '/home/btaylor/BUFR2/data/windnewhts'
+XTRA_HGTS_DIR = '/home/btaylor/Nick_2017/'
 PRIMARY_NPN_API = 'http://10.20.120.73/npn_api/'
 IOWA_STATE_API = 'https://mesonet.agron.iastate.edu/json/'
 BACKUP_NPN_API = 'http://rocstar1/npn_api/'
 AK_DATA_DIR = '../hrrr_ak/BUFR'
 CONUS_DATA_DIR = '../hrrr_conus/BUFR'
 LOG_FILE = '/tmp/npn-dq-tool.log'
+DB_FNAME = '../data_track.db'
 
 WMO_SITE_IDS = {'TLKA': '702510',
                 'HWPA': '703410',
@@ -55,6 +58,25 @@ dictConfig({
     }
 })
 
+def connect_db():
+    """
+    Create a connection to the SQLite database.
+    Arguments:
+    @return {obj} - sqlite3 connection object.
+    """
+    try:
+        conn = sqlite3.connect(DB_FNAME, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+    except sqlite3.Error:
+        conn = None
+    return conn
+
+def sqlite_date_parse(date):
+    """
+    returns a data in hyphenated format for SQLite purposes.
+    Example: input 20200101, output 2020-01-01
+    """
+    return "{}-{}-{}".format(date[:4], date[4:6], date[6:])
+
 def pressure_to_height(pressure, elev):
     """
     Converts pressure to height using the U.S. standard atmosphere,
@@ -70,10 +92,25 @@ def pressure_to_height(pressure, elev):
     factor_2 = (1. - (pressure / pressure_naught) ** exponent_1)
     return (factor_1 * factor_2) + elev
 
+def generate_expected_dates(start_date_str, end_date_str, hourly):
+    """
+    Generates expected dates for data outage tracking purposes.
+    """
+    start_date = datetime.strptime(start_date_str, '%Y%m%d')
+    end_date = datetime.strptime(end_date_str, '%Y%m%d')
+    if hourly:
+        for day in range(int ((end_date - start_date).days) + 1):
+            for hour in range(23):
+                yield start_date + timedelta(days=day, hours=hour)
+    else:
+        for day in range(int ((end_date - start_date).days) + 1):
+            for six_minutes in range(240):
+                yield start_date + timedelta(days=day, seconds=six_minutes*360)
+
 def wind_direction_difference(wdir_hrrr, wdir_npn):
     """
-    rotates the wind difference calculation,
-    so that they lie betweeen -180 and 180
+    Rotates the wind difference calculation,
+    so that they lie betweeen -180 and 180.
     """
     difference = wdir_hrrr- wdir_npn
     condition_1 = np.where(difference > 180, difference - 360., difference)
@@ -102,13 +139,13 @@ def hypsometric(specific_humidities, temperatures, pressures, elev):
 
 def wind_speed(u_vec, v_vec):
     """
-    Computes the wind speed from u and v components
+    Computes the wind speed from u and v components.
     """
     return np.sqrt(u_vec * u_vec + v_vec * v_vec)
 
 def wind_direction(u_vec, v_vec):
     """
-    Computes the wind direction from u and v components
+    Computes the wind direction from u and v components.
     """
     wdir = 90. - (180. / math.pi * np.arctan2(-v_vec, -u_vec))
     wdir[wdir <= 0] += 360.
@@ -124,6 +161,31 @@ def wind_components(speed, wdir_deg):
     v_vec = -speed * np.cos(wdir_rad)
     return (u_vec, v_vec)
 
+def read_b3_bufr(fname):
+    """
+    Reads NPN Build 3 style BUFR files.
+    Extracts and converts height and wind speed/direction.
+    """
+    file_exists = os.path.isfile(fname)
+    if file_exists:
+        with open(fname, 'r') as text_file:
+            try:
+                raw_data = text_file.readlines()
+                elevation = float([line.split('=')[1] for line in raw_data if 'heightOfStation' in line][0])
+                height = [float(line.split('=')[1]) + elevation if 'MISSING' not in line else np.nan for line in raw_data if 'heightAboveStation' in line]
+                speed = [float(line.split('=')[1]) if 'MISSING' not in line else np.nan for line in raw_data if 'windSpeed' in line]
+                direction = [float(line.split('=')[1]) if 'MISSING' not in line else np.nan for line in raw_data if 'windDirection' in line]
+                return zip(height, speed, direction)
+            except csv.Error as err:
+                print 'file %s, line %d: %s' % (fname, reader.line_num, err)
+                APP.logger.exception(err)
+                return zip([0], [0], [0])
+    else:
+        file_not_found = 'File not found: %s' % fname
+        APP.logger.debug(file_not_found)
+        return zip([0], [0], [0])
+
+
 def read_ncep_bufr(fname, convert_uv):
     """
     Reads NCEP BUFR type files,
@@ -132,6 +194,8 @@ def read_ncep_bufr(fname, convert_uv):
     """
     data_exists = False
     empty_array = zip([0], [0], [0])
+    if '2017' in fname:
+        return empty_array
     try:
         bufr = ncepbufr.open(fname)
         while bufr.advance() == 0:
@@ -210,7 +274,8 @@ def calc_min_max(npn_heights, hrrr_heights):
         npn_min_height = npn_heights.min()
         hrrr_max_height = hrrr_heights.max()
         hrrr_min_height = hrrr_heights.min()
-        global_max_height = min(npn_max_height, hrrr_max_height)
+        global_max_height_1 = min(npn_max_height, hrrr_max_height)
+        global_max_height = global_max_height_1 if global_max_height_1 > 0 else 1e4
         global_min_height = max(npn_min_height, hrrr_min_height)
         return (global_max_height, global_min_height)
     except:
@@ -250,6 +315,33 @@ def extra_heights(date, icao, hours):
                         "ICAO": icao, "max_ht": 1e4,
                         "data": npn_data})
     return npn_out
+
+def extra_B3(date, icao, hours):
+    """
+    reads Build 3 data from 2017
+    """
+    npn_out = []
+    for hour in range(hours):
+        init_datetime = datetime.strptime(date + '23', '%Y%m%d%H')
+        hour_datetime = init_datetime - timedelta(hours=hour)
+        epoch_timestamp = (hour_datetime - datetime(1970, 1, 1)).total_seconds()
+        year_str = hour_datetime.strftime('%Y')
+        hour_str = hour_datetime.strftime('%H')
+        time_tuple = hour_datetime.timetuple()
+        jday = str(time_tuple.tm_yday)
+        npn_fname = os.path.join(XTRA_HGTS_DIR, icao.split('_')[0].lower() + '2', year_str + jday + hour_str +
+                                 '00_3600_' + icao.split('_')[0].lower() + '2' + '.bufr')
+        npn_data_zipped = read_b3_bufr(npn_fname)
+        npn_data = [{"SPD": speed, "DIR": direction,
+                     "HT": height}
+                    for height, speed, direction in npn_data_zipped
+                    if speed < 999]
+        npn_out.append({"hourly": "t", "site-id": icao,
+                        "min_ht": 1e2, "timestamp": epoch_timestamp,
+                        "ICAO": icao, "max_ht": 1e4,
+                        "data": npn_data})
+    return npn_out
+
          
 def retrieve_npn_winds(date, icao, hours=24):
     """
@@ -258,7 +350,7 @@ def retrieve_npn_winds(date, icao, hours=24):
     then tries the backup ROCSTAR server.
     """
     if len(icao.split('_')) > 1:
-        return extra_heights(date, icao, hours)
+        return extra_B3(date, icao, hours)
     else:
         timeout = hours / 10.
         winds = 'winds?hourly=t&hours=' + str(hours) + '&enddate=' + date + '2359&icao=' + icao
@@ -397,7 +489,7 @@ def model_check(date, icao, hours, variable):
     verification.fill(np.nan)
     for hour in range(hours):
         init_datetime = datetime.strptime(date + '23', '%Y%m%d%H')
-        if hour == 0:
+        if hour == 0:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
             dt_end = init_datetime
         hour_datetime = init_datetime - timedelta(hours=hour)
         date_str = hour_datetime.strftime('%Y%m%d')
@@ -446,7 +538,7 @@ def available(date, icao, hours, overall=False, npn_data=False):
         npn_data = retrieve_npn_winds(date, icao, hours=hours)
     heights = defaultdict(list)
     for hour, npn_hourly in enumerate(npn_data):
-        npn_hourly_data = npn_hourly['data']
+        npn_hourly_data = npn_hourly["data"]
         npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
         npn_speed = np.asarray([level["SPD"] for level in npn_hourly_data])
         for idx, height in enumerate(npn_heights):
@@ -479,7 +571,8 @@ def compare_profiles():
     """
     endpoint for compare method
     """
-    hrrr_out = []
+    hrrr_data = []
+    global_max_height_list = []
     date = request.args.get('date')
     icao = request.args.get('icao')
     npn_data = retrieve_npn_winds(date, icao)
@@ -496,13 +589,14 @@ def compare_profiles():
                             in hrrr_zip if speed < 999]
         hrrr_heights = np.asarray([level["HT"] for level in hrrr_hourly_data])
         npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
-        global_max_height, global_min_height = calc_min_max(npn_heights, hrrr_heights)
-        hrrr_out.append({"hourly": "t", "site-id": WMO_SITE_IDS.get(icao, icao),
-                         "min_ht": global_min_height, "timestamp": timestamp,
+        global_max_height_list.append(npn_hourly["max_ht"])
+        hrrr_data.append({"hourly": "t", "site-id": WMO_SITE_IDS.get(icao, icao),
+                         "min_ht": npn_hourly["min_ht"], "timestamp": timestamp,
                          "ICAO": "HRRR ANALYSIS - WMO ID " + WMO_SITE_IDS.get(icao, icao),
-                         "max_ht": global_max_height,
+                         "max_ht": npn_hourly["max_ht"],
                          "data": hrrr_hourly_data})
-    global_out = {"npn": npn_data, "hrrr": hrrr_out}
+    global_max_height = int(round(max(global_max_height_list) / 1000.))
+    global_out = {"npn": npn_data, "hrrr": hrrr_data, "global_max_ht": global_max_height}
     return json.dumps(global_out)
 
 @APP.route('/model')
@@ -560,9 +654,60 @@ def overview():
     overall_dqi = ((hourly_availability * 0.25) + (((1 - abs(mean_difference) / 10.) * 100) * 0.5) + (median_availability * 0.25))
     return json.dumps({'mean_difference': mean_difference,
                        'std_difference':std_difference,
-                      'median_availability': median_availability,
-                      'hourly_availability': hourly_availability,
-                      'overall_dqi':overall_dqi})
+                       'median_availability': median_availability,
+                       'hourly_availability': hourly_availability,
+                       'overall_dqi':overall_dqi})
+
+@APP.route('/data_outages')
+def data_outages():
+    """
+    endpoint for data outage tracking
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    start_date = request.args.get('startDate')
+    end_date = request.args.get('endDate')
+    start_date_sql = sqlite_date_parse(start_date)
+    end_date_sql = sqlite_date_parse(end_date)
+    icao = request.args.get('icao')
+    cursor.execute("SELECT fname FROM hourly WHERE day BETWEEN '%s' AND '%s' AND icao = '%s'" % (start_date_sql, end_date_sql, icao))
+    hourly = cursor.fetchall()
+    hourly_times = [str(time[0][6:18]) for time in hourly]
+    hourly_outages = []
+    for dt in generate_expected_dates(start_date, end_date, True):
+        timestamp = dt.strftime('%Y%m%d%H%M')
+        data_present_boolean = 0 if timestamp not in hourly_times else 1
+        hourly_outages.append({'x': timestamp[:8] + 'T' + timestamp[8:12], 'y': data_present_boolean})
+    cursor.execute("SELECT fname FROM sixmin WHERE day BETWEEN '%s' AND '%s' AND icao = '%s'" % (start_date_sql, end_date_sql, icao))
+    six_minute = cursor.fetchall()
+    six_minute_times = [str(time[0][6:18]) for time in six_minute]
+    six_minute_outages = []
+    for dt in generate_expected_dates(start_date, end_date, False):
+        timestamp = dt.strftime('%Y%m%d%H%M')
+        data_present_boolean = 0 if timestamp not in six_minute_times else 1
+        six_minute_outages.append({'x': timestamp[:8] + 'T' + timestamp[8:12], 'y': data_present_boolean})
+    conn.close()
+    return json.dumps({'hourly': hourly_outages, 'sixmin': six_minute_outages})
+
+@APP.route('/data_outages_metadata')
+def data_outages_metadata():
+    """
+    endpoint for data outage tracking metadata including icao and dates
+    """
+    dates_with_data = {}
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT icao from hourly")
+    sites = cursor.fetchall()
+    sites = [site[0] for site in sites]
+    for site in sites:
+        cursor.execute('SELECT DISTINCT day as "day [date]" from hourly')
+        dates = cursor.fetchall()
+        dates = [date[0].isoformat().split('T')[0] for date in dates]
+        dates_with_data.update({site: dates})
+    conn.close()
+    return json.dumps({'sites': sites, 'dates': dates_with_data})
+
 
 @APP.route('/')
 def index_html():
@@ -574,9 +719,16 @@ def index_html():
 @APP.route('/profiles')
 def profile_html():
     """
-    Sends profile page static HTML
+    Sends profile comparison static HTML
     """
     return APP.send_static_file('templates/compare_profiles.html')
+
+@APP.route('/outages')
+def track_html():
+    """
+    Sends data outages static HTML
+    """
+    return APP.send_static_file('templates/data_outages.html')
 
 if __name__ == '__main__':
     APP.debug = True

@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+    <head>
+        <title>NPN Data Quality - Data Track</title>
+        <link rel="stylesheet" type="text/css" href="static/css/style.css">
+        <link rel="stylesheet" type="text/css" href="static/css/jquery-ui.css">
+    </head>
+    <body>
+        <script type="text/javascript" src="static/js/lib/jquery.min.js"></script>
+        <script type="text/javascript" src="static/js/lib/jquery-ui@1.12.1.js"></script>
+        <script src="static/js/lib/moment.min.js"></script>
+        <script src="static/js/lib/chart.js@2.8.0"></script>
+        <script type="text/javascript" src="static/js/data_outages.js"></script>
+        <div id="pageHeader">
+            <div id="pageHeaderImageDiv">
+                <img id="pageHeaderImage" src="static/img/ROC_logo.png">
+            </div>
+            <div id="pageHeaderTitleDiv">Data Outage Tracking</div>
+        </div>
+        <div class="container">
+            <select style="width:100px;" id="selectSite"></select>
+            <input autocomplete="off" id="startDate" type="text"></option></li>
+            <input autocomplete="off" id="endDate" type="text"></option></li>
+            <img id="loaderGif" src="static/img/ajax-loader.gif"></img>
+            <div>
+                <canvas id="trackPlotCanvas"></canvas>
+            </div>
+        </div>
+    </body>
+</html>
