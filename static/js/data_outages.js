@@ -1,11 +1,11 @@
+DATA_OUTAGES_METADATA = "http://10.20.58.144:5000/data_outages_metadata"
+DATA_OUTAGES = "http://10.20.58.144:5000/data_outages"
 availabilityRaw = null;
 availabilitySmoothed = null;
 availabilityChart = null;
 datesAvailable = null;
 startDateStr = null;
 selectedIcao = "ROCO"
-DATA_OUTAGES_METADATA = "http://10.20.58.144:5000/data_outages_metadata"
-DATA_OUTAGES = "http://10.20.58.144:5000/data_outages"
 
 function initSitesDates () {
     var sites = $.getJSON(DATA_OUTAGES_METADATA)

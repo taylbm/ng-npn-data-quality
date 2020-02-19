@@ -13,6 +13,8 @@ var NPN_DQD = {
         selectedDateStr: null,
         differenceVariable: 'Speed',
         modelVariable: 'Speed',
+        qcStatus: 'off',
+        hourly: 't',
         icao: null,
         avgPeriodHours: 24,
         differenceSampleSize: null,
@@ -81,12 +83,13 @@ var NPN_DQD = {
         profiles: function getData(dateStr, instance) {
             $('#loaderGif').css('display', 'block')
             var dateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.COMPARE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr)
+            $.getJSON(NPN_DQD.COMPARE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr + '&qc=' + NPN_DQD.qcStatus, '&hourly=' + NPN_DQD.hourly)
             .done(function(data) {
-                console.log(data)
                 $('#loaderGif').css('display', 'none')
                 hrrrProfile.setData(data['hrrr'])
                 npnProfile.setData(data['npn'])
+                hrrrProfile.render()
+                npnProfile.render()
                 $('#max-height').spinner("value", data['global_max_ht'])
             })
             .fail(function(error) {
@@ -98,7 +101,9 @@ var NPN_DQD = {
             var alpha = 0.8
             $('#loaderGif').css('display', 'block')
             var dateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.DIFFERENCE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr + '&hours=' + NPN_DQD.avgPeriodHours + '&variable=' + NPN_DQD.differenceVariable)
+            $.getJSON(NPN_DQD.DIFFERENCE_API + '?icao=' + NPN_DQD.icao + 
+                      '&date=' + dateStr + '&hours=' + NPN_DQD.avgPeriodHours + 
+                      '&variable=' + NPN_DQD.differenceVariable + '&qc=' + NPN_DQD.qcStatus)
             .done(function(data){
                 $('#loaderGif').css('display', 'none')
                 NPN_DQD.sampleSize = data['sample_size']
@@ -178,7 +183,14 @@ var NPN_DQD = {
             for (idx in NPN_DQD.plotDate) {
                 NPN_DQD.plotDate[idx] = true
             }
-            NPN_DQD[tabName](dateStr, instance)
+            if (tabName == "profiles")
+                NPN_DQD.profiles(dateStr, instance)
+            else if (tabName == "differences")
+                NPN_DQD.differences(dateStr, instance)
+            else if (tabName == "model")
+                NPN_DQD.model(dateStr, instance)
+            else if (tabName == "availability")
+                NPN_DQD.availability(dateStr, instance)
         },
         initFunctions: function(tabs) {
             NPN_DQD.initDateList()
@@ -190,6 +202,21 @@ var NPN_DQD = {
                 beforeShowDay: NPN_DQD.checkIfAvailable,
                 onSelect: viewSwitch
             }
+            $('input[type="checkbox"]').click(function() {
+                var activeTabIdx = $('#tabs').tabs('option', 'active')
+                var tabName = $('#tabs li a')[activeTabIdx].id
+                console.log(tabName)
+                if ($('#QCstatus').html() == "QC On") {
+                    $('#QCstatus').html("QC Off")
+                    NPN_DQD.qcStatus = 'off'
+                    NPN_DQD[tabName](NPN_DQD.selectedDateStr, null)
+                }
+                else if ($('#QCstatus').html() == "QC Off") {
+                    $('#QCstatus').html("QC On")
+                    NPN_DQD.qcStatus = 'on'
+                    NPN_DQD[tabName](NPN_DQD.selectedDateStr, null)
+                }
+            });
             $('#selectDate').datepicker(datepickerOpts);
             $('#selectSite').selectmenu({
                 width: 100,

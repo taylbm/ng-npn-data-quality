@@ -26,20 +26,8 @@ import sqlite3
 APP = Flask(__name__)
 CORS(APP)
 
-XTRA_HGTS_DIR = '/home/btaylor/BUFR2/data/windnewhts'
-XTRA_HGTS_DIR = '/home/btaylor/Nick_2017/'
-PRIMARY_NPN_API = 'http://10.20.120.73/npn_api/'
-IOWA_STATE_API = 'https://mesonet.agron.iastate.edu/json/'
-BACKUP_NPN_API = 'http://rocstar1/npn_api/'
-AK_DATA_DIR = '../hrrr_ak/BUFR'
-CONUS_DATA_DIR = '../hrrr_conus/BUFR'
-LOG_FILE = '/tmp/npn-dq-tool.log'
-DB_FNAME = '../data_track.db'
-
-WMO_SITE_IDS = {'TLKA': '702510',
-                'HWPA': '703410',
-                'ROCO': '723570'
-}
+with open('config.json', 'r') as jsfile:
+    CONFIG = json.load(jsfile)
 
 dictConfig({
     'version': 1,
@@ -49,7 +37,7 @@ dictConfig({
     'handlers': {'file_handler': {
         'class': 'logging.handlers.RotatingFileHandler',
         'formatter': 'default',
-        'filename': LOG_FILE,
+        'filename': CONFIG["LOG_FILE"],
         'level': 'DEBUG'
     }},
     'root': {
@@ -65,22 +53,22 @@ def connect_db():
     @return {obj} - sqlite3 connection object.
     """
     try:
-        conn = sqlite3.connect(DB_FNAME, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+        conn = sqlite3.connect(CONFIG["DB_FNAME"], detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     except sqlite3.Error:
         conn = None
     return conn
 
 def sqlite_date_parse(date):
     """
-    returns a data in hyphenated format for SQLite purposes.
+    Returns a data in hyphenated format for SQLite purposes.
     Example: input 20200101, output 2020-01-01
     """
     return "{}-{}-{}".format(date[:4], date[4:6], date[6:])
 
 def pressure_to_height(pressure, elev):
     """
-    Converts pressure to height using the U.S. standard atmosphere,
-    subtracting station elevation to yield msl height.
+    Converts pressure to height using the U.S. Standard Atmosphere,
+    subtracting station elevation to yield height above Mean Sea Level (MSL).
     """
     temp_naught = 293. # units K
     gamma = 6.5e-3 # units K/m
@@ -193,7 +181,7 @@ def read_ncep_bufr(fname, convert_uv):
     Extracts and converts height and wind speed/direction.
     """
     data_exists = False
-    empty_array = zip([0], [0], [0])
+    empty_array = (np.zeros((1,)), np.zeros((1,)), np.zeros((1,)))
     if '2017' in fname:
         return empty_array
     try:
@@ -281,14 +269,31 @@ def calc_min_max(npn_heights, hrrr_heights):
     except:
         return (1e4, 0)
 
+def high_mode_qc(npn_hourly_data, mean_max_height):
+    npn_hourly_data_qc = []
+    timestep_qc_flag = False
+    adj_mean_max_height = mean_max_height - 2000.
+    for idx, level in enumerate(npn_hourly_data):
+        if level["HT"] > adj_mean_max_height and level["SPD"] < 5.144:
+            timestep_qc_flag = True
+            pass
+        elif np.abs(level["HT"] - npn_hourly_data[idx - 1]["HT"]) > 2000 and idx > 1 and level["SPD"] < 12.86:
+            timestep_qc_flag = True
+            pass
+        elif timestep_qc_flag and level["HT"] > adj_mean_max_height:
+            pass
+        else:
+            npn_hourly_data_qc.append(level)
+    return npn_hourly_data_qc
+
 def retrieve_hrrr_winds(date, hour, icao, convert_uv=False):
     """
     Reads in hrrr bufr sounding from local archive
     """
     icao = icao.split('_')[0]
-    wmo_id = WMO_SITE_IDS[icao]
+    wmo_id = CONFIG["WMO_SITE_IDS"][icao]
     hrrr_fname = 'bufr.' + wmo_id + '.' + date + hour
-    data_dir = CONUS_DATA_DIR if icao == 'ROCO' else AK_DATA_DIR
+    data_dir = CONFIG["CONUS_DATA_DIR"] if icao == 'ROCO' else CONFIG["AK_DATA_DIR"]
     hrrr_fpath = os.path.join(data_dir, wmo_id, date, hrrr_fname)
     hrrr_data = read_ncep_bufr(hrrr_fpath, convert_uv)
     return hrrr_data
@@ -303,7 +308,7 @@ def extra_heights(date, icao, hours):
         hour_datetime = init_datetime - timedelta(hours=hour)
         epoch_timestamp = (hour_datetime - datetime(1970, 1, 1)).total_seconds()
         date_str = hour_datetime.strftime('%Y%m%d%H')
-        npn_fname = os.path.join(XTRA_HGTS_DIR, icao.split('_')[0].lower() + '2', icao.split('_')[0] + '2' + '-' +
+        npn_fname = os.path.join(CONFIG["XTRA_DATA_DIR"], icao.split('_')[0].lower() + '2', icao.split('_')[0] + '2' + '-' +
                                  date_str + '0000.npn.6minwind.csv')
         npn_data_zipped = read_npn_csv(npn_fname)
         npn_data = [{"SPD": speed, "DIR": direction,
@@ -329,7 +334,7 @@ def extra_B3(date, icao, hours):
         hour_str = hour_datetime.strftime('%H')
         time_tuple = hour_datetime.timetuple()
         jday = str(time_tuple.tm_yday)
-        npn_fname = os.path.join(XTRA_HGTS_DIR, icao.split('_')[0].lower() + '2', year_str + jday + hour_str +
+        npn_fname = os.path.join(CONFIG["XTRA_DATA_DIR"], icao.split('_')[0].lower() + '2', year_str + jday + hour_str +
                                  '00_3600_' + icao.split('_')[0].lower() + '2' + '.bufr')
         npn_data_zipped = read_b3_bufr(npn_fname)
         npn_data = [{"SPD": speed, "DIR": direction,
@@ -343,7 +348,7 @@ def extra_B3(date, icao, hours):
     return npn_out
 
          
-def retrieve_npn_winds(date, icao, hours=24):
+def retrieve_npn_winds(date, icao, hourly='t', hours=24):
     """
     Reads in npn data from ROCSTAR.
     Tries the primary ROCSTAR server first with timeout,
@@ -353,15 +358,15 @@ def retrieve_npn_winds(date, icao, hours=24):
         return extra_B3(date, icao, hours)
     else:
         timeout = hours / 10.
-        winds = 'winds?hourly=t&hours=' + str(hours) + '&enddate=' + date + '2359&icao=' + icao
+        winds = 'winds?hourly=' + hourly + '&hours=' + str(hours) + '&enddate=' + date + '2359&icao=' + icao
         try:
-            primary_request = requests.get(PRIMARY_NPN_API + winds, timeout=timeout)
+            primary_request = requests.get(CONFIG["PRIMARY_NPN_API"] + winds, timeout=timeout)
             return primary_request.json()
         except requests.exceptions.RequestException as e:
             APP.logger.exception(e)
             print 'Primary timed out!'
         try:
-            backup_request = requests.get(BACKUP_NPN_API + winds, timeout=timeout)
+            backup_request = requests.get(CONFIG["BACKUP_NPN_API"] + winds, timeout=timeout)
             return backup_request.json()
         except requests.exceptions.RequestException as e:
             APP.logger.exception(e)
@@ -400,7 +405,7 @@ def retrieve_raob(date, hour_str, icao):
     raob_request = 'raob.py?ts=' + timestamp + '&station=KOUN'
     print raob_request
     try:
-        primary_request = requests.get(IOWA_STATE_API + raob_request, timeout=timeout)
+        primary_request = requests.get(CONFIG["IOWA_STATE_API"] + raob_request, timeout=timeout)
         return primary_request.json()
     except requests.exceptions.RequestException as e:
         APP.logger.exception(e)
@@ -415,7 +420,7 @@ def hourly(npn_data, hours):
     hourly_availability = (len(npn_data) / float(hours)) * 100
     return hourly_availability
 
-def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=False):
+def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=False, qc=False):
     """
     Computes difference between NPN data and HRRR data by interpolating to 
     regular height levels, starting at 100 meters, going to 10 km, at 100 meter intervals.
@@ -427,8 +432,11 @@ def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=
     verification.fill(np.nan)
     if not npn_data:
         npn_data = retrieve_npn_winds(date, icao, hours=hours)
+    max_height_list = [hourly['max_ht'] for hourly in npn_data]
+    mean_max_height = np.mean(np.asarray(max_height_list))
     for hour, npn_hourly in enumerate(npn_data):
-        npn_hourly_data = npn_hourly['data']
+        npn_hourly_data_qc = high_mode_qc(npn_hourly['data'], mean_max_height)
+        npn_hourly_data = npn_hourly_data_qc if qc else npn_hourly['data']
         timestamp = npn_hourly['timestamp']
         utc_dt = datetime.utcfromtimestamp(timestamp)
         hour_str = '%02d' % utc_dt.hour
@@ -572,30 +580,35 @@ def compare_profiles():
     endpoint for compare method
     """
     hrrr_data = []
-    global_max_height_list = []
     date = request.args.get('date')
     icao = request.args.get('icao')
-    npn_data = retrieve_npn_winds(date, icao)
-    for hour, npn_hourly in enumerate(npn_data):
-        npn_hourly_data = npn_hourly['data']
-        timestamp = npn_hourly['timestamp']
+    qc = request.args.get('qc') == 'on'
+    hourly = request.args.get('hourly')
+    npn_data = retrieve_npn_winds(date, icao, hourly=hourly)
+    max_height_list = [timeframe['max_ht'] for timeframe in npn_data]
+    mean_max_height = np.mean(np.asarray(max_height_list))
+    for hour, npn_timestep in enumerate(npn_data):
+        npn_timestep_data_qc = high_mode_qc(npn_timestep['data'], mean_max_height)
+        npn_timestep_data = npn_timestep_data_qc if qc else npn_timestep['data']
+        npn_timestep['data'] = npn_timestep_data
+        timestamp = npn_timestep['timestamp']
         utc_dt = datetime.utcfromtimestamp(timestamp)
         hour_str = '%02d' % utc_dt.hour
         iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
         hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, icao, convert_uv=True)
-        hrrr_hourly_data = [{"SPD": speed, "DIR": direction,
+        hrrr_timestep_data = [{"SPD": speed, "DIR": direction,
                              "HT": height}
                             for height, speed, direction
                             in hrrr_zip if speed < 999]
-        hrrr_heights = np.asarray([level["HT"] for level in hrrr_hourly_data])
-        npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
-        global_max_height_list.append(npn_hourly["max_ht"])
-        hrrr_data.append({"hourly": "t", "site-id": WMO_SITE_IDS.get(icao, icao),
-                         "min_ht": npn_hourly["min_ht"], "timestamp": timestamp,
-                         "ICAO": "HRRR ANALYSIS - WMO ID " + WMO_SITE_IDS.get(icao, icao),
-                         "max_ht": npn_hourly["max_ht"],
-                         "data": hrrr_hourly_data})
-    global_max_height = int(round(max(global_max_height_list) / 1000.))
+        hrrr_heights = np.asarray([level["HT"] for level in hrrr_timestep_data])
+        npn_heights = np.asarray([level["HT"] for level in npn_timestep_data])
+        hrrr_data.append({"hourly": hourly, "site-id": CONFIG["WMO_SITE_IDS"].get(icao, icao),
+                         "min_ht": npn_timestep["min_ht"], "timestamp": timestamp,
+                         "ICAO": "HRRR ANALYSIS - WMO ID " + CONFIG["WMO_SITE_IDS"].get(icao, icao),
+                         "max_ht": npn_timestep["max_ht"],
+                         "data": hrrr_timestep_data})
+        npn_timestep["ICAO"] = npn_timestep["ICAO"] + " - Hi Mode QC On" if qc else npn_timestep["ICAO"]
+    global_max_height = int(round(max(max_height_list) / 1000.))
     global_out = {"npn": npn_data, "hrrr": hrrr_data, "global_max_ht": global_max_height}
     return json.dumps(global_out)
 
@@ -622,7 +635,8 @@ def difference_profiles():
     icao = request.args.get('icao')
     hours = int(request.args.get('hours'))
     variable = request.args.get('variable')
-    all_obs, mean_obs, std_obs, sample_size_dict, title_str = difference(date, icao, hours, variable)
+    qc = request.args.get('qc') == 'on'
+    all_obs, mean_obs, std_obs, sample_size_dict, title_str = difference(date, icao, hours, variable, qc=qc)
     return json.dumps({'all_obs': all_obs, 'mean_obs': mean_obs, 
                        'std_obs': std_obs, 'sample_size': sample_size_dict, 
                        'title': title_str}) 
@@ -732,4 +746,4 @@ def track_html():
 
 if __name__ == '__main__':
     APP.debug = True
-    APP.run('10.20.58.144')
+    APP.run(CONFIG["SERVER_IP_ADDRESS"])

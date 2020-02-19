@@ -42,13 +42,29 @@
                     <button id="setMaxHeight">Set Height</button>
                 </div>
             </ul>
-            <img id="loaderGif" src="static/img/ajax-loader.gif"></img>
+            <img id="loaderGif" style="z-index:99" src="static/img/ajax-loader.gif"></img>
             <div id="profileComparison">
                 <div style="position:absolute;width:1280px;height:420px;top:45px">
                     <div id="profilerCanvas"></div>
                 </div>
                 <div style="position:absolute;width:1280px;height:450px;top:465px;">
                     <div id="hrrrCanvas"></div>
+                </div>
+                <div style="position:absolute; z-index:99;">
+                    <label class="switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                    <p style="margin:0" id="QCstatus">QC Off</p>
+                </div>
+                <div style="position:absolute; z-index:99; left:100px; width:100%;">
+                    <legend>Sample Interval:</legend>
+                    <fieldset style="position:absolute; z-index:99">
+                        <label for="hourly">Hourly</label>
+                        <input type="radio" name="sample-interval-radio" id="hourly">
+                        <label for="6-min">6 Minute</label>
+                        <input type="radio" name="sample-interval-radio" id="6-min">
+                    </fieldset>
                 </div>
                 <script type="text/javascript" src="static/js/compare_profiles.js"></script>
             </div>
@@ -60,6 +76,13 @@
                     <option>Speed</option>
                     <option>Direction</option>
                 </select>
+                <div style="position:absolute; z-index:99;">
+                    <label class="switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                    <p id="QCstatus">QC Off</p>
+                </div>
             </div>
             <div id="modelCheck">
                 <canvas id="modelPlotCanvas"></canvas>

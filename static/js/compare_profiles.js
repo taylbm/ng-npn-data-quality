@@ -44,4 +44,17 @@ $(document).ready(function() {
         hrrrProfile.setMaxMinHeight(0, maxHeight, true)
     });
     $('#max-height').spinner();
+    $('input[name="sample-interval-radio"]').checkboxradio();
+    $('input[name="sample-interval-radio"]').on("change", function(event) {
+        var sampleInterval = $(this)[0].id
+        if (sampleInterval == "hourly")
+            NPN_DQD.hourly = "t"
+        else
+            NPN_DQD.hourly = "f"
+        NPN_DQD.profiles(NPN_DQD.selectedDateStr, null)
+
+    });
+    setInterval(function() {
+        NPN_DQD.profiles(NPN_DQD.selectedDateStr, null)
+    }, 360000);
 });
