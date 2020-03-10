@@ -1,15 +1,16 @@
 var NPN_DQD = {
         
-        PRIMARY_NPN_API: 'http://rocstar2/npn_api/',
-        BACKUP_NPN_API: 'http://rocstar1/npn_api/',
-        COMPARE_API: "http://10.20.58.144:5000/compare",
-        DIFFERENCE_API: "http://10.20.58.144:5000/difference",
-        MODEL_API: "http://10.20.58.144:5000/model",
-        AVAILABILITY_API: "http://10.20.58.144:5000/available",
-        OVERVIEW_API: "http://10.20.58.144:5000/overview",
+        PRIMARY_NPN_ENDPOINT: 'http://rocstar2/npn_api/',
+        BACKUP_NPN_ENDPOINT: 'http://rocstar1/npn_api/',
+        COMPARE_ENDPOINT: "http://10.20.58.144:5000/compare",
+        DIFFERENCE_ENDPOINT: "http://10.20.58.144:5000/difference",
+        MODEL_ENDPOINT: "http://10.20.58.144:5000/model",
+        AVAILABILITY_ENDPOINT: "http://10.20.58.144:5000/available",
+        OVERVIEW_ENDPOINT: "http://10.20.58.144:5000/overview",
         //XTRA_HGTS_DATES: ["2019-09-04", "2019-09-05","2019-09-06","2019-09-07","2019-09-08","2019-09-09", "2019-09-10"],
-        XTRA_HGTS_DATES: ["2019-09-16", "2019-09-17","2019-09-18","2019-09-19","2019-09-20","2019-09-21", "2019-09-22", "2019-09-23",
-                          "2019-09-24", "2019-09-25","2019-09-26","2019-09-27","2019-09-28","2019-09-29", "2019-09-30"],
+        //XTRA_HGTS_DATES: ["2019-09-16", "2019-09-17","2019-09-18","2019-09-19","2019-09-20","2019-09-21", "2019-09-22", "2019-09-23",
+        //                  "2019-09-24", "2019-09-25","2019-09-26","2019-09-27","2019-09-28","2019-09-29", "2019-09-30"],
+        XTRA_HGTS_DATES: ["2020-02-12", "2020-02-13", "2020-02-14", "2020-02-15", "2020-02-16", "2020-02-17", "2020-02-18", "2020-02-19"],
         selectedDateStr: null,
         differenceVariable: 'Speed',
         modelVariable: 'Speed',
@@ -32,12 +33,12 @@ var NPN_DQD = {
         daysAvailable: [],
         initDateList: function() {
             d = new Date;
-            var sites = $.getJSON(NPN_DQD.PRIMARY_NPN_API + 'sites?format=json&t_=' + d.getTime())
+            var sites = $.getJSON(NPN_DQD.PRIMARY_NPN_ENDPOINT + 'sites?format=json&t_=' + d.getTime())
             sites.done(function(data) {
                 var selectHTML = ''
                 for (i in data) {
                     selectHTML += '<option id="select' + data[i] + '" value="' + data[i] + '">' + data[i] + '</option>'
-                    selectHTML += '<option id="select' + data[i] + '_xtrahtgs" value="' + data[i] + '_xtrahtgs">' + data[i] + '_Build3</option>'
+                    selectHTML += '<option id="select' + data[i] + '_xtrahtgs" value="' + data[i] + '_xtrahtgs">' + data[i] + '_Build4.1</option>'
                 }
                 $('#selectSite').html(selectHTML)
             });
@@ -46,7 +47,7 @@ var NPN_DQD = {
             });
             sites.then(function(siteData) {
                 NPN_DQD.icao = siteData[0]
-                $.getJSON(NPN_DQD.PRIMARY_NPN_API + 'dates?icao=' + NPN_DQD.icao + '&format=json&t_=' + d.getTime())
+                $.getJSON(NPN_DQD.PRIMARY_NPN_ENDPOINT + 'dates?icao=' + NPN_DQD.icao + '&format=json&t_=' + d.getTime())
                 .done(function(data) {
                     NPN_DQD.daysAvailable = data;
                 })
@@ -64,12 +65,13 @@ var NPN_DQD = {
                 NPN_DQD.daysAvailable = NPN_DQD.XTRA_HGTS_DATES
             }
             else {
-            $.getJSON(NPN_DQD.PRIMARY_NPN_API + 'dates?icao=' + icao + '&format=json&t_=' + d.getTime())
+            $.getJSON(NPN_DQD.PRIMARY_NPN_ENDPOINT + 'dates?icao=' + icao + '&format=json&t_=' + d.getTime())
             .done(function(data) {
                 console.log(data)
                 NPN_DQD.daysAvailable = data;
             })
             .fail(function(error) {
+                alert("Error retrieving available dates: " + error.statusText)
                 console.log(error)
             });
             }
@@ -83,7 +85,7 @@ var NPN_DQD = {
         profiles: function getData(dateStr, instance) {
             $('#loaderGif').css('display', 'block')
             var dateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.COMPARE_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr + '&qc=' + NPN_DQD.qcStatus, '&hourly=' + NPN_DQD.hourly)
+            $.getJSON(NPN_DQD.COMPARE_ENDPOINT + '?icao=' + NPN_DQD.icao + '&date=' + dateStr + '&qc=' + NPN_DQD.qcStatus, '&hourly=' + NPN_DQD.hourly)
             .done(function(data) {
                 $('#loaderGif').css('display', 'none')
                 hrrrProfile.setData(data['hrrr'])
@@ -93,6 +95,7 @@ var NPN_DQD = {
                 $('#max-height').spinner("value", data['global_max_ht'])
             })
             .fail(function(error) {
+                alert("Error retrieving profiles: " + error.statusText)
                 $('#loaderGif').css('display', 'none')
                 console.log(error)
             });
@@ -101,13 +104,16 @@ var NPN_DQD = {
             var alpha = 0.8
             $('#loaderGif').css('display', 'block')
             var dateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.DIFFERENCE_API + '?icao=' + NPN_DQD.icao + 
+            $.getJSON(NPN_DQD.DIFFERENCE_ENDPOINT + '?icao=' + NPN_DQD.icao + 
                       '&date=' + dateStr + '&hours=' + NPN_DQD.avgPeriodHours + 
-                      '&variable=' + NPN_DQD.differenceVariable + '&qc=' + NPN_DQD.qcStatus)
+                      '&variable=' + NPN_DQD.differenceVariable + '&qc=' + NPN_DQD.qcStatus +
+                      '&hourly=' + NPN_DQD.hourly)
             .done(function(data){
                 $('#loaderGif').css('display', 'none')
                 NPN_DQD.sampleSize = data['sample_size']
-                differencesChart.options.title.text = NPN_DQD.icao + ' - ' + data['title']
+                var hourly = NPN_DQD.hourly == 't' ? ' (Hourly Data) ' : ' (Six-Minute Data) '
+                console.log(data)
+                differencesChart.options.title.text = NPN_DQD.icao + ' - ' + data['title'] + hourly + data['all_obs'].length.toString() + ' data points'
                 differencesChart.data.datasets[0].hidden = NPN_DQD.avgPeriodHours > 24
                 differencesChart.data.datasets[0].data = data['all_obs']
                 differencesChart.data.datasets[0].backgroundColor = Chart.helpers.color('#4dc9f6').alpha(alpha).rgbString()
@@ -116,6 +122,7 @@ var NPN_DQD = {
                 differencesChart.update()
             })
             .fail(function(error){
+                alert("Error retrieving computed differences: " + error.statusText)
                 console.log(error)
                 $('#loaderGif').css("display", "none")
             });
@@ -124,7 +131,7 @@ var NPN_DQD = {
             var alpha = 0.8
             $('#loaderGif').css('display', 'block')
             var dateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.MODEL_API + '?icao=' + NPN_DQD.icao + '&date=' + dateStr + '&hours=' + NPN_DQD.avgPeriodHours + '&variable=' + NPN_DQD.modelVariable)
+            $.getJSON(NPN_DQD.MODEL_ENDPOINT + '?icao=' + NPN_DQD.icao + '&date=' + dateStr + '&hours=' + NPN_DQD.avgPeriodHours + '&variable=' + NPN_DQD.modelVariable)
             .done(function(data){
                 $('#loaderGif').css('display', 'none')
                 NPN_DQD.modelSampleSize = data['sample_size']
@@ -137,6 +144,7 @@ var NPN_DQD = {
                 modelChart.update()
             })
             .fail(function(error){
+                alert("Error retrieving model check: " + error.statusText)
                 console.log(error)
                 $('#loaderGif').css("display", "none")
             });
@@ -144,7 +152,7 @@ var NPN_DQD = {
         availability: function getData(dateStr, instance) {
             $('#loaderGif').css('display', 'block')
             var requestDateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.AVAILABILITY_API + '?date=' + requestDateStr + '&icao=' + NPN_DQD.icao + '&hours=' + NPN_DQD.avgPeriodHours)
+            $.getJSON(NPN_DQD.AVAILABILITY_ENDPOINT + '?date=' + requestDateStr + '&icao=' + NPN_DQD.icao + '&hours=' + NPN_DQD.avgPeriodHours)
             .done(function(data){
                 $('#loaderGif').css('display', 'none')
                 availabilityChart.options.title.text = NPN_DQD.icao + ' - ' + data['title']
@@ -155,6 +163,7 @@ var NPN_DQD = {
                 availabilityChart.update()
              })
              .fail(function(error){
+                alert("Error retrieving height availability: " + error.statusText)
                  console.log(error)
                  $('#loaderGif').css('display', 'none')
              });
@@ -162,7 +171,7 @@ var NPN_DQD = {
         dashboard: function(dateStr, instance) {
             $('#loaderGif').css('display', 'block')
             var requestDateStr = dateStr.replace(/-/g, '')
-            $.getJSON(NPN_DQD.OVERVIEW_API + '?icao=' + NPN_DQD.icao + '&date=' + requestDateStr + '&hours=' + NPN_DQD.avgPeriodHours)
+            $.getJSON(NPN_DQD.OVERVIEW_ENDPOINT + '?icao=' + NPN_DQD.icao + '&date=' + requestDateStr + '&hours=' + NPN_DQD.avgPeriodHours)
             .done(function(data) {
                 $('#loaderGif').css('display', 'none')
                 $('#pageHeaderTitleDiv').html('NPN Data Quality - ' + dateStr)
@@ -202,17 +211,16 @@ var NPN_DQD = {
                 beforeShowDay: NPN_DQD.checkIfAvailable,
                 onSelect: viewSwitch
             }
-            $('input[type="checkbox"]').click(function() {
+            $('input[name="comparison-qc"]').click(function() {
                 var activeTabIdx = $('#tabs').tabs('option', 'active')
                 var tabName = $('#tabs li a')[activeTabIdx].id
-                console.log(tabName)
-                if ($('#QCstatus').html() == "QC On") {
-                    $('#QCstatus').html("QC Off")
+                if ($('#comparison-qc-label').html() == "QC On") {
+                    $('#comparison-qc-label').html("QC Off")
                     NPN_DQD.qcStatus = 'off'
                     NPN_DQD[tabName](NPN_DQD.selectedDateStr, null)
                 }
-                else if ($('#QCstatus').html() == "QC Off") {
-                    $('#QCstatus').html("QC On")
+                else if ($('#comparison-qc-label').html() == "QC Off") {
+                    $('#comparison-qc-label').html("QC On")
                     NPN_DQD.qcStatus = 'on'
                     NPN_DQD[tabName](NPN_DQD.selectedDateStr, null)
                 }

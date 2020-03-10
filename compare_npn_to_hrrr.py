@@ -7,21 +7,22 @@ Author: Brandon Taylor
 
 Date: 20190411
 
-Last Modified: 20200115
+Last Modified: 20200310
 
 """
-import csv, os, math, json
+import csv, os, json
 import requests, time
 from collections import defaultdict, OrderedDict
 from logging.config import dictConfig
 from datetime import datetime, timedelta
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
-from scipy.interpolate import interp1d
 from flask import Flask, request
 from flask_cors import CORS
 import ncepbufr
 import sqlite3
+
+import profiler_metr
 
 APP = Flask(__name__)
 CORS(APP)
@@ -65,21 +66,6 @@ def sqlite_date_parse(date):
     """
     return "{}-{}-{}".format(date[:4], date[4:6], date[6:])
 
-def pressure_to_height(pressure, elev):
-    """
-    Converts pressure to height using the U.S. Standard Atmosphere,
-    subtracting station elevation to yield height above Mean Sea Level (MSL).
-    """
-    temp_naught = 293. # units K
-    gamma = 6.5e-3 # units K/m
-    pressure_naught = 1013.25 # units hPa
-    dry_air_gas_constant = 287. # units J/kgK
-    gravity = 9.81 # units m/s^2
-    exponent_1 = (dry_air_gas_constant * gamma / gravity)
-    factor_1 = (temp_naught / gamma)
-    factor_2 = (1. - (pressure / pressure_naught) ** exponent_1)
-    return (factor_1 * factor_2) + elev
-
 def generate_expected_dates(start_date_str, end_date_str, hourly):
     """
     Generates expected dates for data outage tracking purposes.
@@ -94,60 +80,6 @@ def generate_expected_dates(start_date_str, end_date_str, hourly):
         for day in range(int ((end_date - start_date).days) + 1):
             for six_minutes in range(240):
                 yield start_date + timedelta(days=day, seconds=six_minutes*360)
-
-def wind_direction_difference(wdir_hrrr, wdir_npn):
-    """
-    Rotates the wind difference calculation,
-    so that they lie betweeen -180 and 180.
-    """
-    difference = wdir_hrrr- wdir_npn
-    condition_1 = np.where(difference > 180, difference - 360., difference)
-    condition_2 = np.where(condition_1 < -180, condition_1 + 360, condition_1)
-    return condition_2
- 
-def hypsometric(specific_humidities, temperatures, pressures, elev):
-    """
-    Calculates the thickness of the layer using the hypsometric equation.
-    """
-    geometric_height = [elev]
-    pressures_list = list(pressures)
-    pressures_length = len(pressures_list)
-    if pressures_list[0] == 0:
-        return np.zeros((50,))
-    for idx, pressure in enumerate(pressures_list):
-        if idx == pressures_length - 1:
-            break
-        dry_air_gas_constant = 287. # units J/kgK
-        gravity = 9.81 # units m/s^2
-        mean_virtual_temperature = ((1 + 0.61 * specific_humidities[idx]) * temperatures[idx] +
-                                    (1 + 0.61 * specific_humidities[idx+1]) * temperatures[idx+1]) / 2.
-        layer_depth = geometric_height[idx] + ((dry_air_gas_constant * mean_virtual_temperature) / gravity) * math.log(pressures[idx]/pressures[idx+1])
-        geometric_height.append(layer_depth)
-    return np.asarray(geometric_height)
-
-def wind_speed(u_vec, v_vec):
-    """
-    Computes the wind speed from u and v components.
-    """
-    return np.sqrt(u_vec * u_vec + v_vec * v_vec)
-
-def wind_direction(u_vec, v_vec):
-    """
-    Computes the wind direction from u and v components.
-    """
-    wdir = 90. - (180. / math.pi * np.arctan2(-v_vec, -u_vec))
-    wdir[wdir <= 0] += 360.
-    return wdir
-
-def wind_components(speed, wdir_deg):
-    """
-    Computes the vector components of wind from speed and direction.
-    Wind components are return as U (east-west) and V (north-south). 
-    """
-    wdir_rad = wdir_deg * np.pi / 180.
-    u_vec = -speed * np.sin(wdir_rad)
-    v_vec = -speed * np.cos(wdir_rad)
-    return (u_vec, v_vec)
 
 def read_b3_bufr(fname):
     """
@@ -181,7 +113,7 @@ def read_ncep_bufr(fname, convert_uv):
     Extracts and converts height and wind speed/direction.
     """
     data_exists = False
-    empty_array = (np.zeros((1,)), np.zeros((1,)), np.zeros((1,)))
+    empty_array = (np.zeros((3,)), np.zeros((3,)), np.zeros((3,)))
     if '2017' in fname:
         return empty_array
     try:
@@ -206,11 +138,11 @@ def read_ncep_bufr(fname, convert_uv):
             elev = 0.
         bufr.close()
         pressure_hpa = pressure_pa / 100.
-        height_standard = np.rint(pressure_to_height(pressure_hpa, elev))
-        height_hyps = hypsometric(specific_humidity, temperature, pressure_hpa, elev)
+        height_standard = np.rint(profiler_metr.pressure_to_height(pressure_hpa, elev))
+        height_hyps = profiler_metr.hypsometric(specific_humidity, temperature, pressure_hpa, elev)
         if convert_uv:
-            direction = np.around(wind_direction(u_wind, v_wind), decimals=1)
-            speed = np.around(wind_speed(u_wind, v_wind), decimals=2)
+            direction = np.around(profiler_metr.wind_direction(u_wind, v_wind), decimals=1)
+            speed = np.around(profiler_metr.wind_speed(u_wind, v_wind), decimals=2)
             return zip(height_hyps, speed, direction)
         else:
             return (height_hyps, u_wind, v_wind)
@@ -298,27 +230,45 @@ def retrieve_hrrr_winds(date, hour, icao, convert_uv=False):
     hrrr_data = read_ncep_bufr(hrrr_fpath, convert_uv)
     return hrrr_data
 
-def extra_heights(date, icao, hours):
+def extra_heights(date, icao, hours, hourly):
     """
     Tests the extra heights algorithmn
     """
     npn_out = []
-    for hour in range(hours):
-        init_datetime = datetime.strptime(date + '23', '%Y%m%d%H')
-        hour_datetime = init_datetime - timedelta(hours=hour)
-        epoch_timestamp = (hour_datetime - datetime(1970, 1, 1)).total_seconds()
-        date_str = hour_datetime.strftime('%Y%m%d%H')
-        npn_fname = os.path.join(CONFIG["XTRA_DATA_DIR"], icao.split('_')[0].lower() + '2', icao.split('_')[0] + '2' + '-' +
-                                 date_str + '0000.npn.6minwind.csv')
-        npn_data_zipped = read_npn_csv(npn_fname)
-        npn_data = [{"SPD": speed, "DIR": direction,
-                     "HT": height}
-                    for height, speed, direction in npn_data_zipped
-                    if speed < 999]
-        npn_out.append({"hourly": "t", "site-id": icao,
-                        "min_ht": 1e2, "timestamp": epoch_timestamp,
-                        "ICAO": icao, "max_ht": 1e4,
-                        "data": npn_data})
+    if hourly == 't':
+        for hour in range(hours):
+            init_datetime = datetime.strptime(date + '23', '%Y%m%d%H')
+            hour_datetime = init_datetime - timedelta(hours=hour)
+            epoch_timestamp = (hour_datetime - datetime(1970, 1, 1)).total_seconds()
+            date_str = hour_datetime.strftime('%Y%m%d%H')
+            npn_fname = os.path.join(CONFIG["XTRA_DATA_DIR"], icao.split('_')[0].lower() + '2', icao.split('_')[0] + '2' + '-' +
+                                 date_str + '0000.npn.hrlywind.csv')
+            npn_data_zipped = read_npn_csv(npn_fname)
+            npn_data = [{"SPD": speed, "DIR": direction,
+                         "HT": height}
+                        for height, speed, direction in npn_data_zipped
+                        if speed < 999]
+            npn_out.append({"hourly": "t", "site-id": icao,
+                            "min_ht": 1e2, "timestamp": epoch_timestamp,
+                            "ICAO": icao, "max_ht": 1e4,
+                            "data": npn_data})
+    else:
+        for six_minutes in range(hours * 10):
+            init_datetime = datetime.strptime(date + '2354', '%Y%m%d%H%M')
+            hour_datetime = init_datetime - timedelta(minutes=six_minutes * 6)
+            epoch_timestamp = (hour_datetime - datetime(1970, 1, 1)).total_seconds()
+            date_str = hour_datetime.strftime('%Y%m%d%H%M')
+            npn_fname = os.path.join(CONFIG["XTRA_DATA_DIR"], icao.split('_')[0].lower() + '2', icao.split('_')[0] + '2' + '-' +
+                                 date_str + '00.npn.6minwind.csv')
+            npn_data_zipped = read_npn_csv(npn_fname)
+            npn_data = [{"SPD": speed, "DIR": direction,
+                         "HT": height}
+                        for height, speed, direction in npn_data_zipped
+                        if speed < 999]
+            npn_out.append({"hourly": "f", "site-id": icao,
+                            "min_ht": 1e2, "timestamp": epoch_timestamp,
+                            "ICAO": icao, "max_ht": 1e4,
+                            "data": npn_data})
     return npn_out
 
 def extra_B3(date, icao, hours):
@@ -355,7 +305,7 @@ def retrieve_npn_winds(date, icao, hourly='t', hours=24):
     then tries the backup ROCSTAR server.
     """
     if len(icao.split('_')) > 1:
-        return extra_B3(date, icao, hours)
+        return extra_heights(date, icao, hours, hourly)
     else:
         timeout = hours / 10.
         winds = 'winds?hourly=' + hourly + '&hours=' + str(hours) + '&enddate=' + date + '2359&icao=' + icao
@@ -372,27 +322,6 @@ def retrieve_npn_winds(date, icao, hourly='t', hours=24):
             APP.logger.exception(e)
             print 'Backup timed out. Fail!'
         return None
-
-def interpolate_uv(interpolation_tuple):
-    """
-    Interpolates the two observation sets to a regular
-    grid.
-    """
-    (comparison_heights, comparison_u, comparison_v, npn_heights, npn_u, npn_v,
-    verification_heights, variable) = interpolation_tuple
-    comparison_interp1d_u = interp1d(comparison_heights, comparison_u, bounds_error=False)
-    npn_interp1d_u = interp1d(npn_heights, npn_u, bounds_error=False)
-    comparison_interp_u = comparison_interp1d_u(verification_heights)
-    npn_interp_u = npn_interp1d_u(verification_heights)
-    comparison_interp1d_v = interp1d(comparison_heights, comparison_v, bounds_error=False)
-    npn_interp1d_v = interp1d(npn_heights, npn_v, bounds_error=False)
-    comparison_interp_v = comparison_interp1d_v(verification_heights)
-    npn_interp_v = npn_interp1d_v(verification_heights)
-    if variable == 'Speed':
-        diff = wind_speed(comparison_interp_u, comparison_interp_v) - wind_speed(npn_interp_u, npn_interp_v)
-    elif variable == 'Direction':
-        diff = wind_direction_difference(wind_direction(comparison_interp_u, comparison_interp_v), wind_direction(npn_interp_u, npn_interp_v))
-    return diff
 
 def retrieve_raob(date, hour_str, icao):
     """
@@ -420,18 +349,18 @@ def hourly(npn_data, hours):
     hourly_availability = (len(npn_data) / float(hours)) * 100
     return hourly_availability
 
-def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=False, qc=False):
+def difference(date, icao, hours, variable, hourly='t', overall=False, npn_data=False, raob=False, qc=False):
     """
     Computes difference between NPN data and HRRR data by interpolating to 
     regular height levels, starting at 100 meters, going to 10 km, at 100 meter intervals.
     """
     verification_heights = np.arange(100, 10000, 100)
-    # accounts for extra data due to system restarts
-    extra_data_factor = 3
+    # accounts for extra data due to system restarts or six minute data
+    extra_data_factor = 3 if hourly == 't' else 10
     verification = np.zeros((hours * extra_data_factor, verification_heights.shape[0]))
     verification.fill(np.nan)
     if not npn_data:
-        npn_data = retrieve_npn_winds(date, icao, hours=hours)
+        npn_data = retrieve_npn_winds(date, icao, hourly=hourly, hours=hours)
     max_height_list = [hourly['max_ht'] for hourly in npn_data]
     mean_max_height = np.mean(np.asarray(max_height_list))
     for hour, npn_hourly in enumerate(npn_data):
@@ -454,18 +383,18 @@ def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=
                 comparison_heights = np.asarray([level["hght"] for level in raob_data])
                 comparison_sknt = np.asarray([level["sknt"] for level in raob_data])
                 comparison_drct = np.asarray([level["drct"] for level in raob_data])
-                comparison_u, comparison_v = wind_components(comparison_sknt * 1.944, comparison_drct)
+                comparison_u, comparison_v = profiler_metr.wind_components(comparison_sknt * 1.944, comparison_drct)
         else:
             comparison_heights, comparison_u, comparison_v = retrieve_hrrr_winds(iso_date_str, hour_str, icao)
         npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
-        npn_uv = [wind_components(level["SPD"], level["DIR"]) for level in npn_hourly_data]
+        npn_uv = [profiler_metr.wind_components(level["SPD"], level["DIR"]) for level in npn_hourly_data]
         npn_u = [component[0] for component in npn_uv]
         npn_v = [component[1] for component in npn_uv]
         if comparison_heights.shape[0] < 2 or npn_heights.shape[0] < 2:
             diff = np.full_like(verification_heights, np.nan, dtype=np.double)
         else:
             interpolation_tuple = (comparison_heights, comparison_u, comparison_v, npn_heights, npn_u, npn_v, verification_heights, variable)
-            diff = interpolate_uv(interpolation_tuple)
+            diff = profiler_metr.interpolate_uv(interpolation_tuple)
         verification[hour] = diff
     verification = np.around(verification, decimals=2)
     verification_mean = np.around(np.nanmean(verification, axis=0), decimals=1)
@@ -478,6 +407,7 @@ def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=
     sample_size_dict = dict((idx, sample_size[size_idx]) for idx, size_idx in enumerate(sample_size_idx))
     overall_mean = np.nanmean(verification_mean)
     overall_std = np.nanmean(verification_std)
+    print overall_mean
     utc_dt_start = datetime.utcfromtimestamp(npn_data[0]['timestamp'])
     start_date_str = utc_dt_start.strftime('%Y-%m-%d')
     end_date_str = utc_dt.strftime('%Y-%m-%d')
@@ -485,7 +415,8 @@ def difference(date, icao, hours, variable, overall=False, npn_data=False, raob=
     if overall:
         return (overall_mean, overall_std)
     else:
-        return (all_obs, mean_obs, std_obs, sample_size_dict, title_str)
+        return (all_obs, mean_obs, std_obs, 
+                sample_size_dict, title_str)
 
 def model_check(date, icao, hours, variable):
     """
@@ -497,7 +428,7 @@ def model_check(date, icao, hours, variable):
     verification.fill(np.nan)
     for hour in range(hours):
         init_datetime = datetime.strptime(date + '23', '%Y%m%d%H')
-        if hour == 0:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+        if hour == 0:
             dt_end = init_datetime
         hour_datetime = init_datetime - timedelta(hours=hour)
         date_str = hour_datetime.strftime('%Y%m%d')
@@ -512,13 +443,13 @@ def model_check(date, icao, hours, variable):
             comparison_heights = np.asarray([level["hght"] + 357. for level in raob_data])
             comparison_sknt = np.asarray([level["sknt"] for level in raob_data])
             comparison_drct = np.asarray([level["drct"] for level in raob_data])
-            comparison_u, comparison_v = wind_components(comparison_sknt * 0.514, comparison_drct)
+            comparison_u, comparison_v = profiler_metr.wind_components(comparison_sknt * 0.514, comparison_drct)
             hrrr_heights, hrrr_u, hrrr_v = retrieve_hrrr_winds(date_str, hour_str, icao)
             if comparison_heights.shape[0] < 2 or hrrr_heights.shape[0] < 2:
                 diff = np.full_like(verification_heights, np.nan, dtype=np.double)
             else:
                 interpolation_tuple = (comparison_heights, comparison_u, comparison_v, hrrr_heights, hrrr_u, hrrr_v, verification_heights, variable)
-                diff = interpolate_uv(interpolation_tuple)
+                diff = profiler_metr.interpolate_uv(interpolation_tuple)
             verification[hour] = diff
         else:
             continue
@@ -597,9 +528,9 @@ def compare_profiles():
         iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
         hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, icao, convert_uv=True)
         hrrr_timestep_data = [{"SPD": speed, "DIR": direction,
-                             "HT": height}
-                            for height, speed, direction
-                            in hrrr_zip if speed < 999]
+                              "HT": height}
+                              for height, speed, direction
+                              in hrrr_zip if speed < 999]
         hrrr_heights = np.asarray([level["HT"] for level in hrrr_timestep_data])
         npn_heights = np.asarray([level["HT"] for level in npn_timestep_data])
         hrrr_data.append({"hourly": hourly, "site-id": CONFIG["WMO_SITE_IDS"].get(icao, icao),
@@ -634,11 +565,13 @@ def difference_profiles():
     date = request.args.get('date')
     icao = request.args.get('icao')
     hours = int(request.args.get('hours'))
+    hourly = request.args.get('hourly')
     variable = request.args.get('variable')
     qc = request.args.get('qc') == 'on'
-    all_obs, mean_obs, std_obs, sample_size_dict, title_str = difference(date, icao, hours, variable, qc=qc)
+    all_obs, mean_obs, std_obs, sample_size_dict, title_str = difference(date, icao, hours, variable, qc=qc, hourly=hourly)
     return json.dumps({'all_obs': all_obs, 'mean_obs': mean_obs, 
-                       'std_obs': std_obs, 'sample_size': sample_size_dict, 
+                       'std_obs': std_obs,
+                       'sample_size': sample_size_dict, 
                        'title': title_str}) 
 
 @APP.route('/available')

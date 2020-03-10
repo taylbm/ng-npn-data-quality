@@ -34,13 +34,13 @@ $(document).ready(function() {
             label: 'Mean of Differenced Interpolated Obs',
             data: [{}],
             backgroundColor: Chart.helpers.color('#ff0000').alpha(1).rgbString(),
-            borderColor: 'black'
+            borderColor: 'black',
         },
         {
             label: 'Standard Deviation of Differenced Interpolated Obs',
             data: [{}],
             backgroundColor: Chart.helpers.color('#7fff00').alpha(1).rgbString(),
-            borderColor: 'black'
+            borderColor: 'black',
         }
         ]
     }
@@ -99,6 +99,16 @@ $(document).ready(function() {
         data: data,
         options: options
     });
+    $('input[name="sample-interval-radio-differences"]').checkboxradio();
+    $('input[name="sample-interval-radio-differences"]').on("change", function() {
+        var sampleInterval = $(this)[0].id
+        if (sampleInterval == "differences-hourly")
+            NPN_DQD.hourly = "t"
+        else
+            NPN_DQD.hourly = "f"
+        NPN_DQD.differences(NPN_DQD.selectedDateStr, null)
+
+    });
     $('#selectDifferenceVariable').selectmenu({
         change: function() {
             NPN_DQD.differenceVariable = $(this).val();
@@ -110,4 +120,4 @@ $(document).ready(function() {
 
         }
     });
-});
+0});
