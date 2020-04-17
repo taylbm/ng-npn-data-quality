@@ -3,7 +3,7 @@ var autoUpdateTimer;
 function autoUpdate(auto) {
     if (auto) {
         autoUpdateTimer = setInterval(function() {
-            NPN_DQD.profiles(NPN_DQD.selectedDateStr, null)
+            NPN_DQD.profiles(NPN_DQD.userParams.selectedDateStr, null)
         }, 360000);
     }
     else {
@@ -48,7 +48,7 @@ $(document).ready(function() {
         }
     });
     NPN_DQD.initFunctions(true)
-    $('#setMaxHeight').button().click(function()
+    $('#set-max-height').button().click(function()
     {
         var maxHeight = $('#max-height').spinner("value")
         npnProfile.setMaxMinHeight(0, maxHeight, true)
@@ -58,11 +58,13 @@ $(document).ready(function() {
     $('input[name="sample-interval-radio-compare"]').checkboxradio();
     $('input[name="sample-interval-radio-compare"]').on("change", function() {
         var sampleInterval = $(this)[0].id
-        if (sampleInterval == "compare-hourly")
-            NPN_DQD.hourly = "t"
-        else
-            NPN_DQD.hourly = "f"
-        NPN_DQD.profiles(NPN_DQD.selectedDateStr, null)
+        if (NPN_DQD.userParams.selectedDateStr !== null) {
+            if (sampleInterval == "compare-hourly")
+                NPN_DQD.userParams.hourly = "t"
+            else
+                NPN_DQD.userParams.hourly = "f"
+            NPN_DQD.profiles(NPN_DQD.userParams.selectedDateStr, null)
+        }
 
     });
     $('input[name="auto-update"]').on("change", function() {

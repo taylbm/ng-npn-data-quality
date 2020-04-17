@@ -1,4 +1,4 @@
-hourlyAvailabilityGauge = null
+ourlyAvailabilityGauge = null
 meanDifferenceGauge = null
 medianAvailabilityGauge = null
 overallDQIGauge = null

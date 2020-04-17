@@ -72,12 +72,12 @@ $(document).ready(function() {
                 display: true,
                 scaleLabel: {
                     display: true,
-                    labelString: NPN_DQD.modelVariable + ' Difference [HRRR - RAOB] ' + displayOptions[NPN_DQD.modelVariable]['units'],
+                    labelString: NPN_DQD.userParams.modelVariable + ' Difference [HRRR - RAOB] ' + displayOptions[NPN_DQD.userParams.modelVariable]['units'],
                     fontSize: 14
                 },
                 ticks: {
-                    min: displayOptions[NPN_DQD.modelVariable]['ticks'][0],
-                    max: displayOptions[NPN_DQD.modelVariable]['ticks'][1]
+                    min: displayOptions[NPN_DQD.userParams.modelVariable]['ticks'][0],
+                    max: displayOptions[NPN_DQD.userParams.modelVariable]['ticks'][1]
                 }
             }],
             yAxes: [{
@@ -103,9 +103,10 @@ $(document).ready(function() {
         change: function() {
             NPN_DQD.modelVariable = $(this).val();
             NPN_DQD['model'](NPN_DQD.selectedDateStr, null)
-            modelChart.options.scales.xAxes[0].ticks.min = displayOptions[NPN_DQD.modelVariable]['ticks'][0]
-            modelChart.options.scales.xAxes[0].ticks.max = displayOptions[NPN_DQD.modelVariable]['ticks'][1]
-            modelChart.options.scales.xAxes[0].scaleLabel.labelString = NPN_DQD.modelVariable + ' Difference [HRRR - RAOB] ' + displayOptions[NPN_DQD.modelVariable]['units']
+            var modelVariable = NPN_DQD.userParams.modelVariable
+            modelChart.options.scales.xAxes[0].ticks.min = displayOptions[modelVariable]['ticks'][0]
+            modelChart.options.scales.xAxes[0].ticks.max = displayOptions[modelVariable]['ticks'][1]
+            modelChart.options.scales.xAxes[0].scaleLabel.labelString = modelVariable + ' Difference [HRRR - RAOB] ' + displayOptions[modelVariable]['units']
             modelChart.update()
 
         }

@@ -106,7 +106,7 @@ def read_b3_bufr(fname):
         return zip([0], [0], [0])
 
 
-def read_ncep_bufr(fname, convert_uv):
+def read_ncep_bufr(fname, convert_uv, offset):
     """
     Reads NCEP BUFR type files,
     which include the local table as the first message.
@@ -114,6 +114,7 @@ def read_ncep_bufr(fname, convert_uv):
     """
     data_exists = False
     empty_array = (np.zeros((3,)), np.zeros((3,)), np.zeros((3,)))
+    offset_seconds = 3600. * offset
     if '2017' in fname:
         return empty_array
     try:
@@ -122,7 +123,7 @@ def read_ncep_bufr(fname, convert_uv):
             while bufr.load_subset() == 0:
                 elev = bufr.read_subset('GELV')[0][0]
                 ftim = bufr.read_subset('FTIM')[0][0]
-                if ftim == 0.:
+                if ftim == offset_seconds:
                     data_exists = True
                     pressure_pa = bufr.read_subset('PRES')[0]
                     u_wind = bufr.read_subset('UWND')[0]
@@ -152,10 +153,12 @@ def read_ncep_bufr(fname, convert_uv):
         return empty_array
     except IndexError as err:
         print 'Index error while reading NCEP BUFR file %s, skipping for now' % err
+        reload(ncepbufr)
         APP.logger.exception(err)
         return empty_array
     except Exception as err:
         print 'Unknown error: %s, skipping' % err
+        reload(ncepbufr)
         APP.logger.exception(err)
         return empty_array
 
@@ -218,17 +221,26 @@ def high_mode_qc(npn_hourly_data, mean_max_height):
             npn_hourly_data_qc.append(level)
     return npn_hourly_data_qc
 
-def retrieve_hrrr_winds(date, hour, icao, convert_uv=False):
+def retrieve_hrrr_winds(date, hour, user_params_dict, offset=0, convert_uv=False):
     """
     Reads in hrrr bufr sounding from local archive
     """
+    icao = user_params_dict['icao']
     icao = icao.split('_')[0]
     wmo_id = CONFIG["WMO_SITE_IDS"][icao]
-    hrrr_fname = 'bufr.' + wmo_id + '.' + date + hour
-    data_dir = CONFIG["CONUS_DATA_DIR"] if icao == 'ROCO' else CONFIG["AK_DATA_DIR"]
-    hrrr_fpath = os.path.join(data_dir, wmo_id, date, hrrr_fname)
-    hrrr_data = read_ncep_bufr(hrrr_fpath, convert_uv)
-    return hrrr_data
+    conus = icao in CONFIG["CONUS_ICAOS"]
+    model = user_params_dict["modelDataSource"].upper()
+    data_dir = CONFIG[model+"_CONUS_DATA_DIR"] if conus else CONFIG[model+"_AK_DATA_DIR"]
+    if model == "hrrr":
+        offset = offset if conus else int(hour) % 3
+    else:
+        offset = int(hour) % 6
+    obs_dt = datetime.strptime(date + hour, "%Y%m%d%H")
+    prog_dt = obs_dt - timedelta(hours=offset)
+    fname = 'bufr.' + wmo_id + '.' + prog_dt.strftime("%Y%m%d%H")
+    data_path = os.path.join(data_dir, wmo_id, date, fname)
+    model_data = read_ncep_bufr(data_path, convert_uv, offset)
+    return model_data
 
 def extra_heights(date, icao, hours, hourly):
     """
@@ -298,30 +310,49 @@ def extra_B3(date, icao, hours):
     return npn_out
 
          
-def retrieve_npn_winds(date, icao, hourly='t', hours=24):
+def retrieve_npn_winds(user_params, hourly='t', hours=24):
     """
     Reads in npn data from ROCSTAR.
     Tries the primary ROCSTAR server first with timeout,
     then tries the backup ROCSTAR server.
     """
+    icao = user_params['icao']
+    date = user_params['selectedDateStr']
+    source = user_params['npnDataSource']
+    timeout = hours / 10.
     if len(icao.split('_')) > 1:
         return extra_heights(date, icao, hours, hourly)
+    elif source == 'weather-gov':
+        winds = 'records?s=Doc.site-id==' + icao + ';Doc.hourly==' + hourly
+        primary_endpoint = CONFIG["WEATHER_GOV_ENDPOINT"]
+        backup_endpoint = primary_endpoint
     else:
-        timeout = hours / 10.
+        primary_endpoint = CONFIG["PRIMARY_NPN_ENDPOINT"]
+        backup_endpoint = CONFIG["BACKUP_NPN_ENDPOINT"]
         winds = 'winds?hourly=' + hourly + '&hours=' + str(hours) + '&enddate=' + date + '2359&icao=' + icao
-        try:
-            primary_request = requests.get(CONFIG["PRIMARY_NPN_API"] + winds, timeout=timeout)
-            return primary_request.json()
-        except requests.exceptions.RequestException as e:
-            APP.logger.exception(e)
-            print 'Primary timed out!'
-        try:
-            backup_request = requests.get(CONFIG["BACKUP_NPN_API"] + winds, timeout=timeout)
-            return backup_request.json()
-        except requests.exceptions.RequestException as e:
-            APP.logger.exception(e)
-            print 'Backup timed out. Fail!'
-        return None
+    try:
+        primary_request = requests.get(primary_endpoint + winds, timeout=timeout)
+        request_data = primary_request.json()
+        # Drills down to the correct data level if the data comes from weather.gov
+        npn_data = [item["Doc"] for item in request_data] if source == 'weather-gov' else request_data
+        # checks and removes empty data
+        npn_data = [time for time in npn_data if time['data']]
+        return npn_data
+    except requests.exceptions.RequestException as e:
+        APP.logger.exception(e)
+        print 'Primary timed out!'
+    try:
+        backup_request = requests.get(backup_endpoint + winds, timeout=timeout)
+        request_data = backup_request.json()
+        # Drills down to the correct  data level if the data comes from weather.gov
+        npn_data = [item["Doc"] for item in request_data] if source == 'weather-gov' else request_data
+        # checks and removes empty data
+        npn_data = [time for time in npn_data if time['data']]
+        return npn_data
+    except requests.exceptions.RequestException as e:
+        APP.logger.exception(e)
+        print 'Backup timed out. Fail!'
+    return None
 
 def retrieve_raob(date, hour_str, icao):
     """
@@ -334,7 +365,7 @@ def retrieve_raob(date, hour_str, icao):
     raob_request = 'raob.py?ts=' + timestamp + '&station=KOUN'
     print raob_request
     try:
-        primary_request = requests.get(CONFIG["IOWA_STATE_API"] + raob_request, timeout=timeout)
+        primary_request = requests.get(CONFIG["IOWA_STATE_ENDPOINT"] + raob_request, timeout=timeout)
         return primary_request.json()
     except requests.exceptions.RequestException as e:
         APP.logger.exception(e)
@@ -349,24 +380,35 @@ def hourly(npn_data, hours):
     hourly_availability = (len(npn_data) / float(hours)) * 100
     return hourly_availability
 
-def difference(date, icao, hours, variable, hourly='t', overall=False, npn_data=False, raob=False, qc=False):
+def difference(user_params, hourly='t', overall=False, npn_data=False, raob=False, qc=False):
     """
     Computes difference between NPN data and HRRR data by interpolating to 
     regular height levels, starting at 100 meters, going to 10 km, at 100 meter intervals.
     """
+    timestamps_unique = []
+    date = user_params['selectedDateStr']
+    icao = user_params['icao']
+    hours = user_params['avgPeriodHours']
+    source = user_params['npnDataSource']
+    variable = user_params['differenceVariable']
+    offset = int(user_params['modelOffsetHours'])
     verification_heights = np.arange(100, 10000, 100)
     # accounts for extra data due to system restarts or six minute data
-    extra_data_factor = 3 if hourly == 't' else 10
+    extra_data_factor = 3 if hourly == 't' else 20
     verification = np.zeros((hours * extra_data_factor, verification_heights.shape[0]))
     verification.fill(np.nan)
     if not npn_data:
-        npn_data = retrieve_npn_winds(date, icao, hourly=hourly, hours=hours)
-    max_height_list = [hourly['max_ht'] for hourly in npn_data]
+        npn_data = retrieve_npn_winds(user_params, hourly=hourly, hours=hours)
+    max_height_list = [time['max_ht'] for time in npn_data]
     mean_max_height = np.mean(np.asarray(max_height_list))
     for hour, npn_hourly in enumerate(npn_data):
         npn_hourly_data_qc = high_mode_qc(npn_hourly['data'], mean_max_height)
         npn_hourly_data = npn_hourly_data_qc if qc else npn_hourly['data']
         timestamp = npn_hourly['timestamp']
+        # checks for duplicate data
+        if timestamp in timestamps_unique:
+            continue
+        timestamps_unique.append(timestamp)
         utc_dt = datetime.utcfromtimestamp(timestamp)
         hour_str = '%02d' % utc_dt.hour
         iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
@@ -385,7 +427,7 @@ def difference(date, icao, hours, variable, hourly='t', overall=False, npn_data=
                 comparison_drct = np.asarray([level["drct"] for level in raob_data])
                 comparison_u, comparison_v = profiler_metr.wind_components(comparison_sknt * 1.944, comparison_drct)
         else:
-            comparison_heights, comparison_u, comparison_v = retrieve_hrrr_winds(iso_date_str, hour_str, icao)
+            comparison_heights, comparison_u, comparison_v = retrieve_hrrr_winds(iso_date_str, hour_str, user_params, offset=offset)
         npn_heights = np.asarray([level["HT"] for level in npn_hourly_data])
         npn_uv = [profiler_metr.wind_components(level["SPD"], level["DIR"]) for level in npn_hourly_data]
         npn_u = [component[0] for component in npn_uv]
@@ -415,7 +457,7 @@ def difference(date, icao, hours, variable, hourly='t', overall=False, npn_data=
     if overall:
         return (overall_mean, overall_std)
     else:
-        return (all_obs, mean_obs, std_obs, 
+        return (overall_mean, all_obs, mean_obs, std_obs, 
                 sample_size_dict, title_str)
 
 def model_check(date, icao, hours, variable):
@@ -511,12 +553,13 @@ def compare_profiles():
     endpoint for compare method
     """
     hrrr_data = []
-    date = request.args.get('date')
-    icao = request.args.get('icao')
-    qc = request.args.get('qc') == 'on'
-    hourly = request.args.get('hourly')
-    npn_data = retrieve_npn_winds(date, icao, hourly=hourly)
-    max_height_list = [timeframe['max_ht'] for timeframe in npn_data]
+    user_params_dict = json.loads(request.args.get('userParamsDict'))
+    icao = user_params_dict['icao']
+    hourly = user_params_dict['hourly']
+    qc = user_params_dict['qcStatus'] == 'on'
+    offset = int(user_params_dict['modelOffsetHours'])
+    npn_data = retrieve_npn_winds(user_params_dict, hourly=hourly)
+    max_height_list = [time_step['max_ht'] for time_step in npn_data]
     mean_max_height = np.mean(np.asarray(max_height_list))
     for hour, npn_timestep in enumerate(npn_data):
         npn_timestep_data_qc = high_mode_qc(npn_timestep['data'], mean_max_height)
@@ -526,7 +569,7 @@ def compare_profiles():
         utc_dt = datetime.utcfromtimestamp(timestamp)
         hour_str = '%02d' % utc_dt.hour
         iso_date_str = utc_dt.isoformat().split('T')[0].replace('-','')
-        hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, icao, convert_uv=True)
+        hrrr_zip = retrieve_hrrr_winds(iso_date_str, hour_str, user_params_dict, offset=offset, convert_uv=True)
         hrrr_timestep_data = [{"SPD": speed, "DIR": direction,
                               "HT": height}
                               for height, speed, direction
@@ -535,7 +578,7 @@ def compare_profiles():
         npn_heights = np.asarray([level["HT"] for level in npn_timestep_data])
         hrrr_data.append({"hourly": hourly, "site-id": CONFIG["WMO_SITE_IDS"].get(icao, icao),
                          "min_ht": npn_timestep["min_ht"], "timestamp": timestamp,
-                         "ICAO": "HRRR ANALYSIS - WMO ID " + CONFIG["WMO_SITE_IDS"].get(icao, icao),
+                         "ICAO": user_params_dict["modelDataSource"] + " - WMO ID " + CONFIG["WMO_SITE_IDS"].get(icao, icao),
                          "max_ht": npn_timestep["max_ht"],
                          "data": hrrr_timestep_data})
         npn_timestep["ICAO"] = npn_timestep["ICAO"] + " - Hi Mode QC On" if qc else npn_timestep["ICAO"]
@@ -562,15 +605,12 @@ def difference_profiles():
     """
     endpoint for difference method
     """
-    date = request.args.get('date')
-    icao = request.args.get('icao')
-    hours = int(request.args.get('hours'))
-    hourly = request.args.get('hourly')
-    variable = request.args.get('variable')
-    qc = request.args.get('qc') == 'on'
-    all_obs, mean_obs, std_obs, sample_size_dict, title_str = difference(date, icao, hours, variable, qc=qc, hourly=hourly)
+    user_params_dict = json.loads(request.args.get('userParamsDict'))
+    hourly = user_params_dict['hourly']
+    qc = user_params_dict['qcStatus'] == 'on'
+    overall_mean, all_obs, mean_obs, std_obs, sample_size_dict, title_str = difference(user_params_dict, qc=qc, hourly=hourly)
     return json.dumps({'all_obs': all_obs, 'mean_obs': mean_obs, 
-                       'std_obs': std_obs,
+                       'std_obs': std_obs, 'overall_mean': overall_mean,
                        'sample_size': sample_size_dict, 
                        'title': title_str}) 
 

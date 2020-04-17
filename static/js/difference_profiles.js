@@ -6,7 +6,6 @@ displayOptions = {'Speed': {'units': '(m/s)',
                           }
            };
 differencesChart = null;
-differenceVariable = 'Speed'
 function saveDifferenceChart() {
     var image = differencesChart.toBase64Image()
     var fname = differencesChart.options.title.text + '.png'
@@ -72,12 +71,13 @@ $(document).ready(function() {
                 display: true,
                 scaleLabel: {
                     display: true,
-                    labelString: NPN_DQD.differenceVariable + ' Difference [HRRR - NPN] ' + displayOptions[NPN_DQD.differenceVariable]['units'],
+                    labelString: NPN_DQD.userParams.differenceVariable + ' Difference [' + NPN_DQD.userParams.modelDataSource.toUpperCase() + 
+                                 ' - NPN] ' + displayOptions[NPN_DQD.userParams.differenceVariable]['units'],
                     fontSize: 14
                 },
                 ticks: {
-                    min: displayOptions[NPN_DQD.differenceVariable]['ticks'][0],
-                    max: displayOptions[NPN_DQD.differenceVariable]['ticks'][1]
+                    min: displayOptions[NPN_DQD.userParams.differenceVariable]['ticks'][0],
+                    max: displayOptions[NPN_DQD.userParams.differenceVariable]['ticks'][1]
                 }
             }],
             yAxes: [{
@@ -103,19 +103,22 @@ $(document).ready(function() {
     $('input[name="sample-interval-radio-differences"]').on("change", function() {
         var sampleInterval = $(this)[0].id
         if (sampleInterval == "differences-hourly")
-            NPN_DQD.hourly = "t"
+            NPN_DQD.userParams.hourly = "t"
         else
-            NPN_DQD.hourly = "f"
-        NPN_DQD.differences(NPN_DQD.selectedDateStr, null)
+            NPN_DQD.userParams.hourly = "f"
+        NPN_DQD.differences(NPN_DQD.userParams.selectedDateStr, null)
 
     });
     $('#selectDifferenceVariable').selectmenu({
         change: function() {
-            NPN_DQD.differenceVariable = $(this).val();
-            NPN_DQD['differences'](NPN_DQD.selectedDateStr, null)
-            differencesChart.options.scales.xAxes[0].ticks.min = displayOptions[NPN_DQD.differenceVariable]['ticks'][0]
-            differencesChart.options.scales.xAxes[0].ticks.max = displayOptions[NPN_DQD.differenceVariable]['ticks'][1]
-            differencesChart.options.scales.xAxes[0].scaleLabel.labelString = NPN_DQD.differenceVariable + ' Difference [HRRR - NPN] ' + displayOptions[NPN_DQD.differenceVariable]['units']
+            NPN_DQD.userParams.differenceVariable = $(this).val();
+            NPN_DQD['differences'](NPN_DQD.userParams.selectedDateStr, null)
+            var differenceVariable = NPN_DQD.userParams.differenceVariable
+            differencesChart.options.scales.xAxes[0].ticks.min = displayOptions[differenceVariable]['ticks'][0]
+            differencesChart.options.scales.xAxes[0].ticks.max = displayOptions[differenceVariable]['ticks'][1]
+            differencesChart.options.scales.xAxes[0].scaleLabel.labelString = differenceVariable + ' Difference [' +
+                                                                              NPN_DQD.userParams.modelDataSource.toUpperCase() +
+                                                                              ' - NPN] ' + displayOptions[differenceVariable]['units']
             differencesChart.update()
 
         }

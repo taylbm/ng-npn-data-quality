@@ -1,0 +1,24 @@
+{
+"SERVER_IP_ADDRESS": "localhost",
+"PRIMARY_NPN_ENDPOINT": "http://rocstar1/npn_api/",
+"BACKUP_NPN_ENDPOINT": "http://rocstar2/npn_api/",
+"WEATHER_GOV_ENDPOINT": "https://nids-www-metaws.weather.gov/catalogs/ROC_PROFILER_DATA/",
+"IOWA_STATE_ENDPOINT": "https://mesonet.agron.iastate.edu/json/",
+"HRRR_AK_DATA_DIR": "../hrrr_ak/BUFR",
+"HRRR_CONUS_DATA_DIR": "../hrrr_conus/BUFR",
+"NAM_AK_DATA_DIR": "../nam_ak/BUFR",
+"NAM_CONUS_DATA_DIR": "../nam_conus/BUFR",
+"LOG_FILE": "/tmp/npn-dq-tool.log",
+"DB_FNAME": "../data_track.db",
+"XTRA_DATA_DIR": "/home/btaylor/BUFR2/BUFRv4.1/data/windnewhts",
+"WMO_SITE_IDS": {"TLKA": "702510",
+                "HWPA": "703410",
+                "ROCO": "723570",
+                "tlka2": "702510",
+                "hwpa2": "703410",
+                "roco2": "723570"
+                },
+"CONUS_ICAOS": ["ROCO", "roco2"]
+}
+
+

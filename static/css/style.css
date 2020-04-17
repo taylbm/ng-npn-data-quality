@@ -35,32 +35,36 @@ body, html{
 }
 #pageHeader img{ height: 30px; width: 30px; }
 #pageHeaderTitleDiv{
-	height: 40px; width: 100%; line-height: 40px; vertical-align: middle;
+	height: 50px; width: 100%; line-height: 40px; vertical-align: middle;
 	text-align: center; font-size: 25px;
 }
 .loading-container{
-        display: block;
-        left: 0;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        z-index: 100;
-        position: fixed;
+  display: block;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  position: fixed;
 }
 #loaderGif{
-        left: 50%;
-        top: 50%;
-        position: absolute;
-        display: none;
+  left: 50%;
+  top: 50%;
+  position: absolute;
+  display: none;
 }
 .ui-datepicker{
-        z-index: 100 !important;
+  z-index: 100 !important;
 }
 #controlsHeader{
-        width: 1290px;
-        border: 5px solid rgba(197, 197, 197, 0.2);
-        background: rgba(197, 197, 197, 0.2);
-        margin: 0 auto;
+  width: 1290px;
+  border: 5px solid rgba(197, 197, 197, 0.2);
+  background: rgba(197, 197, 197, 0.2);
+  margin: 0 auto;
+}
+#accordion{
+  width: 1300px;
+  margin: 0 auto;
 }
 /* The switch - the box around the slider */
 .switch {
@@ -118,4 +122,13 @@ input:checked + .slider:before {
 .controls-top-level {
   position:absolute; 
   z-index:99;
+}
+#selectDate {
+  width:75px;
+}
+#max-height {
+  width:25px;
+}
+#model-hour-offset{
+  width:25px;
 }

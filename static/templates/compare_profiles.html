@@ -17,6 +17,31 @@
             </div>
             <div id="pageHeaderTitleDiv">NPN Data Quality</div>
         </div>
+        <div id="accordion">
+        <h3>Data Source</h3>
+            <div id="dataSourceDiv">
+                <div style="display:inline-block">
+                <fieldset>
+                    <legend>NPN Data Source:</legend>
+                    <label for="rocstar-1">ROCSTAR1</label>
+                    <input type="radio" name="data-source" id="rocstar-1">
+                    <label for="rocstar-2">ROCSTAR2</label>
+                    <input type="radio" name="data-source" id="rocstar-2">
+                    <label for="weather-gov">WEATHER.GOV</label>
+                    <input type="radio" name="data-source" id="weather-gov">
+                </fieldset>
+                </div>
+                <div style="display:inline-block">
+                <fieldset>
+                    <legend>Model Data Source:</legend>
+                    <label for="hrrr">HRRR</label>
+                    <input type="radio" name="model-data-source" id="hrrr">
+                    <label for="nam">NAM-3km-nest</label>
+                    <input type="radio" name="model-data-source" id="nam">
+                </fieldset>
+                </div>
+            </div>
+        <h3>Data Display</h3>
         <div id="tabs" class="container">
             <ul>
                 <li><a id="profiles" href="#profileComparison">Compare Profiles</a></li>
@@ -25,6 +50,10 @@
                 <li tabindex="0"><a id="availability" href="#heightAvailability">Height Availability</a></li>
                 <li><select style="width:100px;" id="selectSite"></select></li>
                 <li><input autocomplete="off" id="selectDate" type="text"></option></li>
+                <p style="display:inline">
+                    <label for="model-hour-offset">Model Offset (Hrs):</label>
+                    <input id="model-hour-offset" value=0 name="model-hour-offset">
+                </p>
                 <div id="avgPeriod" style="display:none">
                     <div style="display:inline-block">Averaging Time Period:</div>
                     <div style="display:inline-block" class="widget">
@@ -36,18 +65,18 @@
                         <input type="radio" name="avg-period-radio" id="oneMonth">
                     </div>
                 </div>
-                <div id="maxHeight" style="display:inline-block">
+                <div id="maxHeight" style="display:inline">
                     <label for="max-height">Max Height (km) :</label>
                     <input id="max-height" name="max-height">
-                    <button id="setMaxHeight">Set Height</button>
+                    <button id="set-max-height">Set Height</button>
                 </div>
             </ul>
             <img id="loaderGif" style="z-index:99" src="static/img/ajax-loader.gif"></img>
             <div id="profileComparison">
-                <div style="position:absolute;width:1280px;height:420px;top:45px">
+                <div style="position:absolute;width:1280px;height:420px;top:65px;left:0px;">
                     <div id="profilerCanvas"></div>
                 </div>
-                <div style="position:absolute;width:1280px;height:450px;top:465px;">
+                <div style="position:absolute;width:1280px;height:450px;top:485px;left:0px;">
                     <div id="hrrrCanvas"></div>
                 </div>
                 <div class="controls-top-level">
@@ -111,6 +140,7 @@
                 <canvas id="availabilityPlotCanvas"></canvas>
                 <script type="text/javascript" src="static/js/availability.js"></script>
             </div>
+        </div>
         </div>
     </body>
 </html>

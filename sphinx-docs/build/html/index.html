@@ -1,0 +1,342 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Welcome to ng-npn-data-quality’s documentation! &#8212; ng-npn-data-quality 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-ng-npn-data-quality-s-documentation">
+<h1>Welcome to ng-npn-data-quality’s documentation!<a class="headerlink" href="#welcome-to-ng-npn-data-quality-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<span class="target" id="module-profiler_metr"></span><p>Filename: profiler_metr.py</p>
+<p>Purpose: A collection of meteorological calculations used to 
+manipulate profiler data into a form usable for analysis.</p>
+<p>Author: Brandon Taylor</p>
+<p>Date: 20200310</p>
+<p>Last Modified: 20200310</p>
+<dl class="function">
+<dt id="profiler_metr.hypsometric">
+<code class="descclassname">profiler_metr.</code><code class="descname">hypsometric</code><span class="sig-paren">(</span><em>specific_humidities</em>, <em>temperatures</em>, <em>pressures</em>, <em>elev</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#hypsometric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.hypsometric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the thickness of the layer using the hypsometric equation.
+Returns the resulting geometric heights in a numpy array.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="profiler_metr.interpolate_uv">
+<code class="descclassname">profiler_metr.</code><code class="descname">interpolate_uv</code><span class="sig-paren">(</span><em>interpolation_tuple</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#interpolate_uv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.interpolate_uv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates the two observation sets to a regular
+grid.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="profiler_metr.pressure_to_height">
+<code class="descclassname">profiler_metr.</code><code class="descname">pressure_to_height</code><span class="sig-paren">(</span><em>pressure</em>, <em>elev</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#pressure_to_height"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.pressure_to_height" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts pressure to height using the U.S. Standard Atmosphere,
+subtracting station elevation to yield height above Mean Sea Level (MSL).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="profiler_metr.wind_components">
+<code class="descclassname">profiler_metr.</code><code class="descname">wind_components</code><span class="sig-paren">(</span><em>speed</em>, <em>wdir_deg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#wind_components"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.wind_components" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the vector components of wind from speed and direction.
+Wind components are return as U (east-west) and V (north-south).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="profiler_metr.wind_direction">
+<code class="descclassname">profiler_metr.</code><code class="descname">wind_direction</code><span class="sig-paren">(</span><em>u_vec</em>, <em>v_vec</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#wind_direction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.wind_direction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the wind direction from u and v components.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="profiler_metr.wind_direction_difference">
+<code class="descclassname">profiler_metr.</code><code class="descname">wind_direction_difference</code><span class="sig-paren">(</span><em>wdir_hrrr</em>, <em>wdir_npn</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#wind_direction_difference"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.wind_direction_difference" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rotates the wind difference calculation,
+so that they lie betweeen -180 and 180.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="profiler_metr.wind_speed">
+<code class="descclassname">profiler_metr.</code><code class="descname">wind_speed</code><span class="sig-paren">(</span><em>u_vec</em>, <em>v_vec</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/profiler_metr.html#wind_speed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#profiler_metr.wind_speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the wind speed from u and v components.</p>
+</dd></dl>
+
+<span class="target" id="module-compare_npn_to_hrrr"></span><p>Filename: compare_npn_to_hrrr.py</p>
+<p>Purpose: Reads and parses NGNPN CSV data and HRRR model anaylsis BUFR soundings</p>
+<p>Author: Brandon Taylor</p>
+<p>Date: 20190411</p>
+<p>Last Modified: 20200310</p>
+<dl class="function">
+<dt id="compare_npn_to_hrrr.available">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">available</code><span class="sig-paren">(</span><em>date</em>, <em>icao</em>, <em>hours</em>, <em>overall=False</em>, <em>npn_data=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#available"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.available" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes height availability</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.calc_min_max">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">calc_min_max</code><span class="sig-paren">(</span><em>npn_heights</em>, <em>hrrr_heights</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#calc_min_max"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.calc_min_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the height bounds across a time-series</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.compare_profiles">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">compare_profiles</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#compare_profiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.compare_profiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for compare method</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.connect_db">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">connect_db</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#connect_db"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.connect_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a connection to the SQLite database.
+Arguments:
+&#64;return {obj} - sqlite3 connection object.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.data_availability">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">data_availability</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#data_availability"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.data_availability" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for availability method</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.data_outages">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">data_outages</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#data_outages"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.data_outages" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for data outage tracking</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.data_outages_metadata">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">data_outages_metadata</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#data_outages_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.data_outages_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for data outage tracking metadata including icao and dates</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.difference">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">difference</code><span class="sig-paren">(</span><em>user_params</em>, <em>hourly='t'</em>, <em>overall=False</em>, <em>npn_data=False</em>, <em>raob=False</em>, <em>qc=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#difference"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.difference" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes difference between NPN data and HRRR data by interpolating to 
+regular height levels, starting at 100 meters, going to 10 km, at 100 meter intervals.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.difference_profiles">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">difference_profiles</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#difference_profiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.difference_profiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for difference method</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.extra_B3">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">extra_B3</code><span class="sig-paren">(</span><em>date</em>, <em>icao</em>, <em>hours</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#extra_B3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.extra_B3" title="Permalink to this definition">¶</a></dt>
+<dd><p>reads Build 3 data from 2017</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.extra_heights">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">extra_heights</code><span class="sig-paren">(</span><em>date</em>, <em>icao</em>, <em>hours</em>, <em>hourly</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#extra_heights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.extra_heights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests the extra heights algorithmn</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.generate_expected_dates">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">generate_expected_dates</code><span class="sig-paren">(</span><em>start_date_str</em>, <em>end_date_str</em>, <em>hourly</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#generate_expected_dates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.generate_expected_dates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates expected dates for data outage tracking purposes.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.hourly">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">hourly</code><span class="sig-paren">(</span><em>npn_data</em>, <em>hours</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#hourly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.hourly" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the percentage availability of hourly data encountered,
+from given expected number of hours.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.index_html">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">index_html</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#index_html"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.index_html" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends main page static HTML</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.model">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.model" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for model check method</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.model_check">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">model_check</code><span class="sig-paren">(</span><em>date</em>, <em>icao</em>, <em>hours</em>, <em>variable</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#model_check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.model_check" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes difference between NPN data and HRRR data by interpolating to 
+regular height levels, starting at 100 meters, going to 10 km, at 100 meter intervals.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.overview">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">overview</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#overview"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.overview" title="Permalink to this definition">¶</a></dt>
+<dd><p>endpoint for dashboard overview</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.profile_html">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">profile_html</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#profile_html"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.profile_html" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends profile comparison static HTML</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.read_b3_bufr">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">read_b3_bufr</code><span class="sig-paren">(</span><em>fname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#read_b3_bufr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.read_b3_bufr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads NPN Build 3 style BUFR files.
+Extracts and converts height and wind speed/direction.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.read_ncep_bufr">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">read_ncep_bufr</code><span class="sig-paren">(</span><em>fname</em>, <em>convert_uv</em>, <em>offset</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#read_ncep_bufr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.read_ncep_bufr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads NCEP BUFR type files,
+which include the local table as the first message.
+Extracts and converts height and wind speed/direction.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.read_npn_csv">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">read_npn_csv</code><span class="sig-paren">(</span><em>fname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#read_npn_csv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.read_npn_csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads NGNPN CSV files.
+Extracts and converts height and wind speed/direction.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.retrieve_hrrr_winds">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">retrieve_hrrr_winds</code><span class="sig-paren">(</span><em>date</em>, <em>hour</em>, <em>user_params_dict</em>, <em>offset=0</em>, <em>convert_uv=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#retrieve_hrrr_winds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.retrieve_hrrr_winds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads in hrrr bufr sounding from local archive</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.retrieve_npn_winds">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">retrieve_npn_winds</code><span class="sig-paren">(</span><em>user_params</em>, <em>hourly='t'</em>, <em>hours=24</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#retrieve_npn_winds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.retrieve_npn_winds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads in npn data from ROCSTAR.
+Tries the primary ROCSTAR server first with timeout,
+then tries the backup ROCSTAR server.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.retrieve_raob">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">retrieve_raob</code><span class="sig-paren">(</span><em>date</em>, <em>hour_str</em>, <em>icao</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#retrieve_raob"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.retrieve_raob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads in npn data from ROCSTAR.
+Tries the primary ROCSTAR server first with timeout,
+then tries the backup ROCSTAR.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.sqlite_date_parse">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">sqlite_date_parse</code><span class="sig-paren">(</span><em>date</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#sqlite_date_parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.sqlite_date_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a data in hyphenated format for SQLite purposes.
+Example: input 20200101, output 2020-01-01</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compare_npn_to_hrrr.track_html">
+<code class="descclassname">compare_npn_to_hrrr.</code><code class="descname">track_html</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/compare_npn_to_hrrr.html#track_html"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compare_npn_to_hrrr.track_html" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends data outages static HTML</p>
+</dd></dl>
+
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">ng-npn-data-quality</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Brandon Taylor.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

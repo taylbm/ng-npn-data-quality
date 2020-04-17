@@ -1,3 +1,4 @@
-0 * * * * /home/btaylor/npn_data_quality/hrrr_conus_dload.sh &>> /tmp/hrrr_conus.log
-0 */3 * * * /home/btaylor/npn_data_quality/hrrr_ak_dload.sh &>> /tmp/hrrr_ak.log
-
+0 * * * * /home/btaylor/ng-npn-data-quality/hrrr_conus_dload.sh &>> /tmp/hrrr_conus.log
+0 */3 * * * /home/btaylor/ng-npn-data-quality/hrrr_ak_dload.sh &>> /tmp/hrrr_ak.log
+0 */6 * * * /home/btaylor/ng-npn-data-quality/nam_conus_dload.sh &>> /tmp/nam_conus.log
+0 */6 * * * /home/btaylor/ng-npn-data-quality/nam_ak_dload.sh &>> /tmp/nam_ak.log
