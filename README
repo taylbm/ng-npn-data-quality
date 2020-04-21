@@ -1,0 +1,35 @@
+# ng-npn-data-quality
+
+Next Generation NPN Data Quality Tool
+Interpolates model wind profiles to a regular grid,
+to be compared with wind profiles from the NPN radars.
+Model data originates from NOMADS. NAM 3-km model 
+data is the most reliable model for Alaska. HRRR data is 
+the backup model source, and is retrieved from Google Cloud to enable
+backfills.
+
+## Installation
+
+Required python packages are provided in the requirements.txt file.
+This python2 environment can be recreated by running a single command, 
+as demonstrated below. The most important python package, py-ncepbufr, 
+is provided as a compiled RPM in the rpm folder.
+
+```bash
+pip install --user -r requirements.txt
+```
+
+Cronjobs must be added to the users crontab to download new model data.
+A template is provided in the cronjobs folder. HRRR CONUS is downloaded every
+hour, HRRR AK every 3 hours, and NAM 3-km every 6 hours (UTC).
+
+## Usage
+
+The server can be run from the command line by invoking the following command.
+```bash
+python compare_npn_to_model.py
+```
+If you are simply running the server and viewing the data from the same machine (default),
+IP_SERVER_ADDRESS in config.json can remain as "localhost". If you are serving on the ROC
+LAN IP_SERVER_ADDRESS must be to the internal LAN IP ADDRESS of your machine, which will follow
+the pattern of "10.20.58.*".

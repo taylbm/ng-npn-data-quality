@@ -1,13 +1,15 @@
 """
-Filename: compare_npn_to_hrrr.py
+Filename: compare_npn_to_model.py
 
-Purpose: Reads and parses NGNPN CSV data and HRRR model anaylsis BUFR soundings
+Purpose: Retrieves NPN data from either
+ROCSTAR or WEATHER.GOV and compares to BUFR soundings
+from either the HRRR or NAM 3-KM model.
 
 Author: Brandon Taylor
 
 Date: 20190411
 
-Last Modified: 20200310
+Last Modified: 20200420
 
 """
 import csv, os, json
