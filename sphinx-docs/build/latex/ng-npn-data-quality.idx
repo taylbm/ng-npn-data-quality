@@ -1,0 +1,35 @@
+\indexentry{profiler\_metr (module)@\spxentry{profiler\_metr}\spxextra{module}|hyperpage}{1}
+\indexentry{hypsometric() (in module profiler\_metr)@\spxentry{hypsometric()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{interpolate\_uv() (in module profiler\_metr)@\spxentry{interpolate\_uv()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{pressure\_to\_height() (in module profiler\_metr)@\spxentry{pressure\_to\_height()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{wind\_components() (in module profiler\_metr)@\spxentry{wind\_components()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{wind\_direction() (in module profiler\_metr)@\spxentry{wind\_direction()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{wind\_direction\_difference() (in module profiler\_metr)@\spxentry{wind\_direction\_difference()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{wind\_speed() (in module profiler\_metr)@\spxentry{wind\_speed()}\spxextra{in module profiler\_metr}|hyperpage}{1}
+\indexentry{compare\_npn\_to\_model (module)@\spxentry{compare\_npn\_to\_model}\spxextra{module}|hyperpage}{1}
+\indexentry{available() (in module compare\_npn\_to\_model)@\spxentry{available()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{calc\_min\_max() (in module compare\_npn\_to\_model)@\spxentry{calc\_min\_max()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{compare\_profiles() (in module compare\_npn\_to\_model)@\spxentry{compare\_profiles()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{connect\_db() (in module compare\_npn\_to\_model)@\spxentry{connect\_db()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{data\_availability() (in module compare\_npn\_to\_model)@\spxentry{data\_availability()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{data\_outages() (in module compare\_npn\_to\_model)@\spxentry{data\_outages()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{data\_outages\_metadata() (in module compare\_npn\_to\_model)@\spxentry{data\_outages\_metadata()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{difference() (in module compare\_npn\_to\_model)@\spxentry{difference()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{1}
+\indexentry{difference\_profiles() (in module compare\_npn\_to\_model)@\spxentry{difference\_profiles()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{extra\_B3() (in module compare\_npn\_to\_model)@\spxentry{extra\_B3()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{extra\_heights() (in module compare\_npn\_to\_model)@\spxentry{extra\_heights()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{generate\_expected\_dates() (in module compare\_npn\_to\_model)@\spxentry{generate\_expected\_dates()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{hourly() (in module compare\_npn\_to\_model)@\spxentry{hourly()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{index\_html() (in module compare\_npn\_to\_model)@\spxentry{index\_html()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{model() (in module compare\_npn\_to\_model)@\spxentry{model()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{model\_check() (in module compare\_npn\_to\_model)@\spxentry{model\_check()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{overview() (in module compare\_npn\_to\_model)@\spxentry{overview()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{profile\_html() (in module compare\_npn\_to\_model)@\spxentry{profile\_html()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{read\_b3\_bufr() (in module compare\_npn\_to\_model)@\spxentry{read\_b3\_bufr()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{read\_ncep\_bufr() (in module compare\_npn\_to\_model)@\spxentry{read\_ncep\_bufr()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{read\_npn\_csv() (in module compare\_npn\_to\_model)@\spxentry{read\_npn\_csv()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{retrieve\_hrrr\_winds() (in module compare\_npn\_to\_model)@\spxentry{retrieve\_hrrr\_winds()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{retrieve\_npn\_winds() (in module compare\_npn\_to\_model)@\spxentry{retrieve\_npn\_winds()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{retrieve\_raob() (in module compare\_npn\_to\_model)@\spxentry{retrieve\_raob()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{sqlite\_date\_parse() (in module compare\_npn\_to\_model)@\spxentry{sqlite\_date\_parse()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}
+\indexentry{track\_html() (in module compare\_npn\_to\_model)@\spxentry{track\_html()}\spxextra{in module compare\_npn\_to\_model}|hyperpage}{2}

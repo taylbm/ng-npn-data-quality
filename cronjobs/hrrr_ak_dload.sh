@@ -1,5 +1,6 @@
 #! /usr/bin/bash
 
+DAYS=${1:-2}
 ROOT=/home/btaylor/npn_data_quality/hrrr_ak/BUFR
 # HRRR data comes from Google Cloud because sometimes NOMADS is missing files,
 # and will be backfilled.
@@ -8,7 +9,7 @@ GCLOUD_URL="https://storage.googleapis.com/high-resolution-rapid-refresh/hrrr."
 WMO_IDS=( "703410" "702510" )
 for id in "${WMO_IDS[@]}"
     do
-    for day in $(seq 0 2);
+    for day in $(seq 0 $DAYS);
         do utcDate=`date --date="${day} day ago" --utc "+%Y%m%d"`;
         echo "$utcDate"
         # create site directory if it doesn't exist

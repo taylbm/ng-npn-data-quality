@@ -12,7 +12,7 @@ Welcome to ng-npn-data-quality's documentation!
 
 .. automodule:: profiler_metr
    :members:
-.. automodule:: compare_npn_to_hrrr
+.. automodule:: compare_npn_to_model
    :members:
 
 

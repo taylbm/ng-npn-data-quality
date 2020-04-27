@@ -30,6 +30,6 @@ The server can be run from the command line by invoking the following command.
 python compare_npn_to_model.py
 ```
 If you are simply running the server and viewing the data from the same machine (default),
-IP_SERVER_ADDRESS in config.json can remain as "localhost". If you are serving on the ROC
-LAN IP_SERVER_ADDRESS must be to the internal LAN IP ADDRESS of your machine, which will follow
+SERVER_IP_ADDRESS in config.json can remain as "localhost". If you are serving on the ROC
+LAN SERVER_IP_ADDRESS must be to the internal LAN IP ADDRESS of your machine, which will follow
 the pattern of "10.20.58.*".
